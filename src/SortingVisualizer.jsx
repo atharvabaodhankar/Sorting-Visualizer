@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Zap, Settings, StepForward, SkipForward, ChevronDown, BarChart3, Clock, Database } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Settings, StepForward, SkipForward, ChevronDown, BarChart3, Clock, Database, Menu } from 'lucide-react';
 
 const SortingVisualizer = () => {
   const [array, setArray] = useState([]);
@@ -7,7 +7,8 @@ const SortingVisualizer = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [algorithm, setAlgorithm] = useState('bubble');
   const [speed, setSpeed] = useState(50);
-  const speedRef = useRef(50); // Ref to access current speed in async loop
+
+  const speedRef = useRef(50); 
   
   const [comparisons, setComparisons] = useState(0);
   const [swaps, setSwaps] = useState(0);
@@ -17,8 +18,12 @@ const SortingVisualizer = () => {
   const [customInput, setCustomInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   
+  // UI State
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [flashMessage, setFlashMessage] = useState(null);
+
   const stopRef = useRef(false);
-  const isPausedRef = useRef(false); // Ref for pause state
+  const isPausedRef = useRef(false); 
   const pauseResolverRef = useRef(null);
   const skipPassRef = useRef(false);
   const lastPassIdRef = useRef(null);
@@ -38,7 +43,6 @@ const SortingVisualizer = () => {
     generateRandomArray();
   }, []);
 
-  // Update speed ref when state changes
   useEffect(() => {
       speedRef.current = speed;
   }, [speed]);
@@ -55,6 +59,7 @@ const SortingVisualizer = () => {
     setCurrentStep('Ready to sort');
     setIsPaused(false);
     isPausedRef.current = false;
+    setFlashMessage(null);
   };
 
   const sleep = (ms) => {
@@ -68,14 +73,19 @@ const SortingVisualizer = () => {
     });
   };
 
-  const updateArray = async (newArray, highlighted = [], sorted = [], passId = null) => {
+  const updateArray = async (newArray, highlighted = [], sorted = [], passId = null, action = null) => {
     if (stopRef.current) return false;
     
     setArray([...newArray]);
     setHighlightedIndices(highlighted);
     setSortedIndices(sorted);
 
-    // Use REF for pause check to avoid stale closure
+    if (action === 'swap') {
+        setFlashMessage('SWAP');
+    } else {
+        setFlashMessage(null);
+    }
+
     let shouldPause = isPausedRef.current;
     
     if (skipPassRef.current) {
@@ -94,7 +104,6 @@ const SortingVisualizer = () => {
     if (shouldPause) {
         await waitForResume();
     } else {
-        // Use REF for speed to avoid stale closure
         const delay = skipPassRef.current ? 0 : (101 - speedRef.current) * 5;
         await sleep(delay);
     }
@@ -118,7 +127,7 @@ const SortingVisualizer = () => {
           swp++;
           setSwaps(swp);
           swapped = true;
-          if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
+          if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i, 'swap')) return;
         }
       }
       if (!swapped) break;
@@ -434,7 +443,7 @@ const SortingVisualizer = () => {
   const maxHeight = Math.max(...array);
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-[#0f1020] text-gray-100 overflow-hidden font-sans">
+    <div className="flex min-h-screen bg-[#0f1020] text-gray-100 overflow-hidden font-sans relative">
       
       {/* Background Gradients */}
       <div className="fixed inset-0 pointer-events-none">
@@ -443,11 +452,13 @@ const SortingVisualizer = () => {
       </div>
 
       {/* Left Sidebar / Hero Section */}
-      <div className="lg:w-1/3 p-8 flex flex-col justify-center relative z-10 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 backdrop-blur-xl">
+      <div className={`${isSidebarOpen ? 'w-full lg:w-1/3 p-8 opacity-100' : 'w-0 p-0 opacity-0 overflow-hidden'} transition-all duration-300 ease-in-out flex flex-col justify-center relative z-20 border-r border-white/10 bg-black/20 backdrop-blur-xl whitespace-nowrap`}>
         <div className="mb-8">
-           <h1 className="text-5xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 mb-6 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] leading-tight">
-            Sorting <br/> Visualizer
-          </h1>
+           <div className="flex items-center gap-4 mb-6">
+                <h1 className="text-5xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] leading-tight">
+                    Sorting <br/> Visualizer
+                </h1>
+           </div>
           <p className="text-xl text-gray-400 font-light leading-relaxed">
             Experience the beauty of algorithms in motion. <br/>
             Watch how data organizes itself through elegant logic.
@@ -455,7 +466,6 @@ const SortingVisualizer = () => {
         </div>
 
         <div className="space-y-4">
-             {/* Additional Controls in Sidebar for Mobile, or just decorative/clean space */}
              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
                 <div className="flex items-center gap-3 mb-2 text-purple-300">
                     <Clock size={20} />
@@ -486,18 +496,29 @@ const SortingVisualizer = () => {
       </div>
 
       {/* Right Main Interface */}
-      <div className="lg:w-2/3 p-4 lg:p-8 relative z-10 flex flex-col h-screen overflow-y-auto">
+      <div className={`flex-1 p-4 lg:p-8 relative z-10 flex flex-col h-screen overflow-y-auto transition-all duration-300`}>
         
         {/* Top Control Bar */}
+        {/* Top Control Bar */}
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-xl mb-6 w-full">
-            <div className="flex items-center gap-4 w-full xl:w-auto">
-                 <div className="relative group">
+            
+            <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
+                 {/* Sidebar Toggle Button */}
+                 <button 
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md border border-white/10 transition-all shadow-lg group flex-shrink-0"
+                    title="Toggle Sidebar"
+                >
+                    <Menu size={20} className="group-hover:scale-110 transition-transform" />
+                </button>
+
+                 <div className="relative group w-full md:w-auto">
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-200"></div>
                     <select
                         value={algorithm}
                         onChange={(e) => setAlgorithm(e.target.value)}
                         disabled={sorting}
-                        className="relative w-full xl:w-64 bg-slate-900 text-white rounded-lg p-3 border border-white/10 focus:border-purple-400 focus:outline-none appearance-none cursor-pointer"
+                        className="relative w-full md:w-64 bg-slate-900 text-white rounded-lg p-3 border border-white/10 focus:border-purple-400 focus:outline-none appearance-none cursor-pointer"
                     >
                         {Object.entries(algorithms).map(([key, name]) => (
                         <option key={key} value={key}>{name}</option>
@@ -506,7 +527,7 @@ const SortingVisualizer = () => {
                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                 </div>
                 
-                <div className="flex-1 px-4">
+                <div className="w-full md:w-48 px-2">
                   <div className="flex justify-between text-xs text-gray-400 mb-1">
                     <span>Speed</span>
                     <span>{speed}%</span>
@@ -522,12 +543,12 @@ const SortingVisualizer = () => {
                 </div>
             </div>
 
-            <div className="flex gap-3 w-full xl:w-auto">
+            <div className="flex flex-wrap justify-center gap-3 w-full xl:w-auto">
                  {!sorting ? (
                     <button
                         onClick={startSorting}
                         disabled={array.length === 0}
-                        className="flex-1 xl:flex-none px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] rounded-xl font-bold transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                        className="flex-1 xl:flex-none px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] rounded-xl font-bold transition-all transform hover:scale-105 flex items-center justify-center gap-2 min-w-[120px]"
                     >
                         <Play size={18} fill="currentColor" /> Sort
                     </button>
@@ -535,7 +556,7 @@ const SortingVisualizer = () => {
                     <div className="flex gap-2 flex-1 xl:flex-none">
                         <button
                             onClick={togglePause}
-                            className={`flex-1 xl:flex-none px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${
+                            className={`flex-1 xl:flex-none px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg min-w-[100px] ${
                                 isPaused 
                                 ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/30' 
                                 : 'bg-amber-500 hover:bg-amber-400 text-white shadow-amber-500/30'
@@ -596,7 +617,7 @@ const SortingVisualizer = () => {
         )}
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
                 <div>
                      <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Comparisons</p>
@@ -630,6 +651,17 @@ const SortingVisualizer = () => {
 
         {/* Main Visualization Area */}
         <div className="flex-1 relative rounded-3xl bg-black/40 border border-white/10 backdrop-blur-md shadow-2xl p-8 mb-6 overflow-hidden flex flex-col">
+            
+            {/* Action Overlay */}
+            {flashMessage && (
+                <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
+                    <div className="bg-black/50 backdrop-blur-sm p-8 rounded-3xl animate-in zoom-in duration-200">
+                        <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-bounce tracking-widest">
+                            {flashMessage}
+                        </h1>
+                    </div>
+                </div>
+            )}
             
             {/* Step Status Text */}
             <div className="absolute top-6 left-8 right-8 z-10 flex justify-between items-start">
