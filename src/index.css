@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+@theme {
+  --color-glass-border: rgba(255, 255, 255, 0.1);
+  --color-glass-surface: rgba(255, 255, 255, 0.05);
+  --color-glass-highlight: rgba(255, 255, 255, 0.1);
+  --color-neon-purple: #a855f7;
+  --color-neon-pink: #ec4899;
+  --color-neon-blue: #3b82f6;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0f172a;
+  color: white;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

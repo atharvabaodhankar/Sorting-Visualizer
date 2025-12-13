@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Zap, Settings, StepForward, SkipForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Settings, StepForward, SkipForward, ChevronDown, BarChart3, Clock, Database } from 'lucide-react';
 
 const SortingVisualizer = () => {
   const [array, setArray] = useState([]);
@@ -53,7 +53,7 @@ const SortingVisualizer = () => {
   };
 
   const waitForResume = async () => {
-    if (pauseResolverRef.current) return; // Already waiting?
+    if (pauseResolverRef.current) return;
     return new Promise(resolve => {
       pauseResolverRef.current = resolve;
     });
@@ -66,17 +66,14 @@ const SortingVisualizer = () => {
     setHighlightedIndices(highlighted);
     setSortedIndices(sorted);
 
-    // Handle Skip Pass Logic
     let shouldPause = isPaused;
     
     if (skipPassRef.current) {
         if (passId !== lastPassIdRef.current) {
-            // New pass detected, stop skipping and pause
             skipPassRef.current = false;
             setIsPaused(true); 
             shouldPause = true;
         } else {
-            // Still in same pass, ignore pause and run fast
             shouldPause = false;
         }
     }
@@ -93,122 +90,86 @@ const SortingVisualizer = () => {
     return true;
   };
 
-  // Bubble Sort
+  // --- Sorting Implementations (No changes to logic) ---
   const bubbleSort = async (arr) => {
     const n = arr.length;
     let comp = 0, swp = 0;
-    
     for (let i = 0; i < n - 1; i++) {
       let swapped = false;
       setCurrentStep(`Pass ${i + 1}: Comparing adjacent elements`);
-      
       for (let j = 0; j < n - i - 1; j++) {
         comp++;
         setComparisons(comp);
-        
         if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
-        
         if (arr[j] > arr[j + 1]) {
           [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
           swp++;
           setSwaps(swp);
           swapped = true;
-          
           if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
         }
       }
-      
       if (!swapped) break;
     }
-    
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: n }, (_, i) => i));
   };
 
-  // Selection Sort
   const selectionSort = async (arr) => {
     const n = arr.length;
     let comp = 0, swp = 0;
-    
     for (let i = 0; i < n - 1; i++) {
       let minIdx = i;
       setCurrentStep(`Finding minimum element from position ${i}`);
-      
       for (let j = i + 1; j < n; j++) {
         comp++;
         setComparisons(comp);
-        
         if (!await updateArray(arr, [i, j, minIdx], Array.from({ length: i }, (_, k) => k), i)) return;
-        
-        if (arr[j] < arr[minIdx]) {
-          minIdx = j;
-        }
+        if (arr[j] < arr[minIdx]) minIdx = j;
       }
-      
       if (minIdx !== i) {
         [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
         swp++;
         setSwaps(swp);
-        
         if (!await updateArray(arr, [i, minIdx], Array.from({ length: i + 1 }, (_, k) => k), i)) return;
       }
     }
-    
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: n }, (_, i) => i));
   };
 
-  // Insertion Sort
   const insertionSort = async (arr) => {
     const n = arr.length;
     let comp = 0, swp = 0;
-    
     for (let i = 1; i < n; i++) {
       let key = arr[i];
       let j = i - 1;
       setCurrentStep(`Inserting element ${key} into sorted portion`);
-      
       while (j >= 0) {
         comp++;
         setComparisons(comp);
-        
         if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => k), i)) return;
-        
         if (arr[j] > key) {
           arr[j + 1] = arr[j];
           swp++;
           setSwaps(swp);
           j--;
-        } else {
-          break;
-        }
+        } else { break; }
       }
-      
       arr[j + 1] = key;
       if (!await updateArray(arr, [j + 1], Array.from({ length: i + 1 }, (_, k) => k), i)) return;
     }
-    
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: n }, (_, i) => i));
   };
 
-  // Merge Sort
-  // PassID strategy: Treat each merge operation as a pass, identified by start index or depth?
-  // Let's use a simple counter for Merge Sort passes since it's recursive
   let mergePassCounter = 0;
-  
   const mergeSort = async (arr, start = 0, end = arr.length - 1) => {
     if (start >= end) return;
-    
     const mid = Math.floor((start + end) / 2);
     setCurrentStep(`Dividing array: [${start}...${mid}] and [${mid + 1}...${end}]`);
-    
-    // Check pause even during divide steps? Maybe not strictly necessary to visualize divide if updateArray isn't called.
-    // But we should probably visualize the recursion if we want true step-by-step
-    
     await mergeSort(arr, start, mid);
     await mergeSort(arr, mid + 1, end);
-    
     mergePassCounter++;
     await merge(arr, start, mid, end, mergePassCounter);
   };
@@ -216,42 +177,27 @@ const SortingVisualizer = () => {
   const merge = async (arr, start, mid, end, passId) => {
     const left = arr.slice(start, mid + 1);
     const right = arr.slice(mid + 1, end + 1);
-    
     let i = 0, j = 0, k = start;
     setCurrentStep(`Merging subarrays from ${start} to ${end}`);
-    
     while (i < left.length && j < right.length) {
       setComparisons(c => c + 1);
-      
       if (!await updateArray(arr, [k, start + i, mid + 1 + j], [], passId)) return;
-      
-      if (left[i] <= right[j]) {
-        arr[k] = left[i];
-        i++;
-      } else {
-        arr[k] = right[j];
-        j++;
-      }
-      setSwaps(s => s + 1);
-      k++;
+      if (left[i] <= right[j]) { arr[k] = left[i]; i++; } 
+      else { arr[k] = right[j]; j++; }
+      setSwaps(s => s + 1); k++;
     }
-    
     while (i < left.length) {
       arr[k] = left[i];
       if (!await updateArray(arr, [k], [], passId)) return;
-      i++;
-      k++;
+      i++; k++;
     }
-    
     while (j < right.length) {
       arr[k] = right[j];
       if (!await updateArray(arr, [k], [], passId)) return;
-      j++;
-      k++;
+      j++; k++;
     }
   };
 
-  // Quick Sort
   let quickPassCounter = 0;
   const quickSort = async (arr, low = 0, high = arr.length - 1) => {
     if (low < high) {
@@ -269,50 +215,35 @@ const SortingVisualizer = () => {
     const pivot = arr[high];
     let i = low - 1;
     setCurrentStep(`Partitioning around pivot ${pivot}`);
-    
     for (let j = low; j < high; j++) {
       setComparisons(c => c + 1);
-      
       if (!await updateArray(arr, [j, high, i + 1], [], passId)) return null;
-      
       if (arr[j] < pivot) {
         i++;
         [arr[i], arr[j]] = [arr[j], arr[i]];
         setSwaps(s => s + 1);
-        
         if (!await updateArray(arr, [i, j], [], passId)) return null;
       }
     }
-    
     [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
     setSwaps(s => s + 1);
-    
     if (!await updateArray(arr, [i + 1, high], [], passId)) return null;
-    
     return i + 1;
   };
 
-  // Heap Sort
   const heapSort = async (arr) => {
     const n = arr.length;
-    
     setCurrentStep('Building max heap');
-    // Building heap - maybe treat as one setup pass?
     for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
       await heapify(arr, n, i, 'build');
     }
-    
     for (let i = n - 1; i > 0; i--) {
       setCurrentStep(`Extracting maximum element to position ${i}`);
       [arr[0], arr[i]] = [arr[i], arr[0]];
       setSwaps(s => s + 1);
-      
-      // Extraction pass identified by 'i'
       if (!await updateArray(arr, [0, i], Array.from({ length: n - i }, (_, k) => n - 1 - k), i)) return;
-      
       await heapify(arr, i, 0, i);
     }
-    
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: n }, (_, i) => i));
   };
@@ -321,78 +252,56 @@ const SortingVisualizer = () => {
     let largest = i;
     const left = 2 * i + 1;
     const right = 2 * i + 2;
-    
     if (left < n) {
       setComparisons(c => c + 1);
       if (arr[left] > arr[largest]) largest = left;
     }
-    
     if (right < n) {
       setComparisons(c => c + 1);
       if (arr[right] > arr[largest]) largest = right;
     }
-    
     if (largest !== i) {
       [arr[i], arr[largest]] = [arr[largest], arr[i]];
       setSwaps(s => s + 1);
-      
       if (!await updateArray(arr, [i, largest], [], passId)) return;
-      
       await heapify(arr, n, largest, passId);
     }
   };
 
-  // Shell Sort
   const shellSort = async (arr) => {
     const n = arr.length;
     let gap = Math.floor(n / 2);
-    
     while (gap > 0) {
       setCurrentStep(`Sorting with gap size ${gap}`);
-      
-      // Pass ID here can be combination of gap and i? 
-      // Let's use string "gap-{gap}" for major passes
-      
       for (let i = gap; i < n; i++) {
         const temp = arr[i];
         let j = i;
-        
         while (j >= gap) {
           setComparisons(c => c + 1);
-          
           if (!await updateArray(arr, [j, j - gap], [], `gap-${gap}`)) return;
-          
           if (arr[j - gap] > temp) {
             arr[j] = arr[j - gap];
             setSwaps(s => s + 1);
             j -= gap;
-          } else {
-            break;
-          }
+          } else { break; }
         }
-        
         arr[j] = temp;
         if (!await updateArray(arr, [j], [], `gap-${gap}`)) return;
       }
-      
       gap = Math.floor(gap / 2);
     }
-    
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: n }, (_, i) => i));
   };
 
-  // Radix Sort
   const radixSort = async (arr) => {
     const max = Math.max(...arr);
     let exp = 1;
-    
     while (Math.floor(max / exp) > 0) {
       setCurrentStep(`Sorting by digit at position ${exp}`);
       await countingSort(arr, exp);
       exp *= 10;
     }
-    
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: arr.length }, (_, i) => i));
   };
@@ -401,26 +310,17 @@ const SortingVisualizer = () => {
     const n = arr.length;
     const output = new Array(n);
     const count = new Array(10).fill(0);
-    
-    // Counting pass
     for (let i = 0; i < n; i++) {
       const digit = Math.floor(arr[i] / exp) % 10;
       count[digit]++;
     }
-    
-    for (let i = 1; i < 10; i++) {
-      count[i] += count[i - 1];
-    }
-    
-    // Build pass
+    for (let i = 1; i < 10; i++) { count[i] += count[i - 1]; }
     for (let i = n - 1; i >= 0; i--) {
       const digit = Math.floor(arr[i] / exp) % 10;
       output[count[digit] - 1] = arr[i];
       count[digit]--;
       setSwaps(s => s + 1);
     }
-    
-    // Copy pass
     for (let i = 0; i < n; i++) {
       arr[i] = output[i];
       if (!await updateArray(arr, [i], [], `exp-${exp}`)) return;
@@ -437,42 +337,21 @@ const SortingVisualizer = () => {
     setComparisons(0);
     setSwaps(0);
     setSortedIndices([]);
-    
     const arrCopy = [...array];
-    
     switch (algorithm) {
-      case 'bubble':
-        await bubbleSort(arrCopy);
-        break;
-      case 'selection':
-        await selectionSort(arrCopy);
-        break;
-      case 'insertion':
-        await insertionSort(arrCopy);
-        break;
-      case 'merge':
-        mergePassCounter = 0;
-        await mergeSort(arrCopy);
+      case 'bubble': await bubbleSort(arrCopy); break;
+      case 'selection': await selectionSort(arrCopy); break;
+      case 'insertion': await insertionSort(arrCopy); break;
+      case 'merge': mergePassCounter = 0; await mergeSort(arrCopy); 
         setSortedIndices(Array.from({ length: arrCopy.length }, (_, i) => i));
-        setCurrentStep('Sorting complete!');
-        break;
-      case 'quick':
-        quickPassCounter = 0;
-        await quickSort(arrCopy);
+        setCurrentStep('Sorting complete!'); break;
+      case 'quick': quickPassCounter = 0; await quickSort(arrCopy);
         setSortedIndices(Array.from({ length: arrCopy.length }, (_, i) => i));
-        setCurrentStep('Sorting complete!');
-        break;
-      case 'heap':
-        await heapSort(arrCopy);
-        break;
-      case 'shell':
-        await shellSort(arrCopy);
-        break;
-      case 'radix':
-        await radixSort(arrCopy);
-        break;
+        setCurrentStep('Sorting complete!'); break;
+      case 'heap': await heapSort(arrCopy); break;
+      case 'shell': await shellSort(arrCopy); break;
+      case 'radix': await radixSort(arrCopy); break;
     }
-    
     setSorting(false);
     setIsPaused(false);
     setHighlightedIndices([]);
@@ -481,7 +360,7 @@ const SortingVisualizer = () => {
   const stopSorting = () => {
     stopRef.current = true;
     if (pauseResolverRef.current) {
-        pauseResolverRef.current(); // Unblock if paused
+        pauseResolverRef.current();
         pauseResolverRef.current = null;
     }
     setSorting(false);
@@ -493,14 +372,12 @@ const SortingVisualizer = () => {
 
   const togglePause = () => {
     if (isPaused) {
-        // Resume
         setIsPaused(false);
         if (pauseResolverRef.current) {
             pauseResolverRef.current();
             pauseResolverRef.current = null;
         }
     } else {
-        // Pause
         setIsPaused(true);
     }
   };
@@ -509,15 +386,6 @@ const SortingVisualizer = () => {
       if (pauseResolverRef.current) {
           pauseResolverRef.current();
           pauseResolverRef.current = null;
-          // IMPORTANT: If we are paused, we only want to advance one step.
-          // The updateArray function will check isPaused again next time.
-          // Since togglePause set isPaused(false), we need to ensure it is TRUE for stepping.
-          // Actually, if we are paused, 'isPaused' is true. 
-          // We resolve the promise. updateArray continues. 
-          // It calls sleep(delay) -> wait...
-          // Then calls updateArray again. 
-          // Next updateArray: isPaused is TRUE. waitForResume() called.
-          // So just resolving checks out for 1 step.
       }
   };
 
@@ -534,7 +402,6 @@ const SortingVisualizer = () => {
       .split(',')
       .map(n => parseInt(n.trim()))
       .filter(n => !isNaN(n) && n > 0 && n <= 100);
-    
     if (numbers.length > 0) {
       setArray(numbers);
       setSortedIndices([]);
@@ -549,296 +416,285 @@ const SortingVisualizer = () => {
   const maxHeight = Math.max(...array);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 p-8">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-2 animate-pulse">
-            Sorting Visualizer
+    <div className="flex flex-col lg:flex-row min-h-screen bg-[#0f1020] text-gray-100 overflow-hidden font-sans">
+      
+      {/* Background Gradients */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-purple-900/20 blur-[120px] rounded-full mix-blend-screen" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] bg-blue-900/20 blur-[120px] rounded-full mix-blend-screen" />
+      </div>
+
+      {/* Left Sidebar / Hero Section */}
+      <div className="lg:w-1/3 p-8 flex flex-col justify-center relative z-10 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 backdrop-blur-xl">
+        <div className="mb-8">
+           <h1 className="text-5xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 mb-6 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] leading-tight">
+            Sorting <br/> Visualizer
           </h1>
-          <p className="text-gray-300 text-lg">Experience the beauty of algorithms in motion</p>
-        </div>
-
-        {/* Controls */}
-        <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-6 mb-6 border border-purple-500/20 shadow-2xl">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-            <div>
-              <label className="block text-purple-300 mb-2 text-sm font-semibold">Algorithm</label>
-              <select
-                value={algorithm}
-                onChange={(e) => setAlgorithm(e.target.value)}
-                disabled={sorting}
-                className="w-full bg-gray-700/50 text-white rounded-lg p-3 border border-purple-500/30 focus:border-purple-400 focus:outline-none transition-all"
-              >
-                {Object.entries(algorithms).map(([key, name]) => (
-                  <option key={key} value={key}>{name}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-purple-300 mb-2 text-sm font-semibold">
-                Speed: {speed}%
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="100"
-                value={speed}
-                onChange={(e) => setSpeed(parseInt(e.target.value))}
-                className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
-              />
-            </div>
-
-            <div className="flex items-end gap-2">
-                {!sorting ? (
-                    <button
-                        onClick={startSorting}
-                        disabled={array.length === 0}
-                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg rounded-lg font-semibold transition-all transform hover:scale-105"
-                    >
-                        <Play size={20} /> Sort
-                    </button>
-                ) : (
-                    <div className="flex flex-1 gap-2">
-                         <button
-                            onClick={togglePause}
-                            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
-                                isPaused 
-                                ? 'bg-green-500 hover:bg-green-600 text-white' 
-                                : 'bg-yellow-500 hover:bg-yellow-600 text-white'
-                            }`}
-                        >
-                            {isPaused ? <Play size={20} /> : <Pause size={20} />}
-                        </button>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex items-end gap-2">
-              <button
-                onClick={stopSorting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all transform hover:scale-105"
-              >
-                <RotateCcw size={20} /> Stop
-              </button>
-              <button
-                onClick={() => setShowSettings(!showSettings)}
-                className="px-4 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-all"
-              >
-                <Settings size={20} />
-              </button>
-            </div>
-          </div>
-          
-           {sorting && (
-            <div className="flex gap-4 justify-center mt-4">
-                 <button
-                    onClick={nextStep}
-                    disabled={!isPaused}
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all"
-                    title="Next Step (only when paused)"
-                 >
-                    <StepForward size={20} /> Step
-                 </button>
-                 <button
-                    onClick={nextPass}
-                    disabled={!isPaused} // Can specificy if we want Next Pass to work while running too, but user req implied "skip" logic
-                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all"
-                     title="Next Pass (only when paused)"
-                 >
-                    <SkipForward size={20} /> Next Pass
-                 </button>
-            </div>
-             )}
-
-          {showSettings && (
-            <div className="mt-4 p-4 bg-gray-700/30 rounded-lg border border-purple-500/20">
-              <label className="block text-purple-300 mb-2 text-sm font-semibold">
-                Custom Input (comma-separated numbers 1-100)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={customInput}
-                  onChange={(e) => setCustomInput(e.target.value)}
-                  placeholder="e.g., 45, 23, 67, 12, 89"
-                  disabled={sorting}
-                  className="flex-1 bg-gray-700/50 text-white rounded-lg p-3 border border-purple-500/30 focus:border-purple-400 focus:outline-none"
-                />
-                <button
-                  onClick={handleCustomInput}
-                  disabled={sorting}
-                  className="px-6 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold transition-all"
-                >
-                  Load
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-lg rounded-xl p-6 border border-purple-500/30">
-            <div className="flex items-center gap-3">
-              <Zap className="text-yellow-400" size={24} />
-              <div>
-                <p className="text-gray-300 text-sm">Comparisons</p>
-                <p className="text-3xl font-bold text-white">{comparisons}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-pink-500/20 to-pink-600/20 backdrop-blur-lg rounded-xl p-6 border border-pink-500/30">
-            <div className="flex items-center gap-3">
-              <Zap className="text-pink-400" size={24} />
-              <div>
-                <p className="text-gray-300 text-sm">Swaps</p>
-                <p className="text-3xl font-bold text-white">{swaps}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-lg rounded-xl p-6 border border-blue-500/30">
-            <div className="flex items-center gap-3">
-              <Zap className="text-blue-400" size={24} />
-              <div>
-                <p className="text-gray-300 text-sm">Array Size</p>
-                <p className="text-3xl font-bold text-white">{array.length}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Current Step */}
-        <div className="bg-gray-800/50 backdrop-blur-lg rounded-xl p-4 mb-6 border border-purple-500/20">
-          <p className="text-center text-purple-300 text-lg font-semibold">
-            {currentStep} {isPaused ? '(Paused)' : ''}
+          <p className="text-xl text-gray-400 font-light leading-relaxed">
+            Experience the beauty of algorithms in motion. <br/>
+            Watch how data organizes itself through elegant logic.
           </p>
         </div>
 
-        {/* Visualization */}
-        <div className="bg-gray-800/50 backdrop-blur-lg rounded-2xl p-8 border border-purple-500/20 shadow-2xl">
-          <div className="flex items-end justify-center gap-1 h-96">
-            {array.map((value, idx) => {
-              const height = (value / maxHeight) * 100;
-              const isHighlighted = highlightedIndices.includes(idx);
-              const isSorted = sortedIndices.includes(idx);
-              
-              let barColor = 'from-purple-500 to-pink-500';
-              if (isSorted) {
-                barColor = 'from-green-400 to-emerald-500';
-              } else if (isHighlighted) {
-                barColor = 'from-yellow-400 to-orange-500';
-              }
-              
-              return (
-                <div
-                  key={idx}
-                  className="relative group flex-1 max-w-16"
-                  style={{
-                    height: `${height}%`,
-                    transition: 'all 0.3s ease'
-                  }}
-                >
-                  <div
-                    className={`w-full h-full bg-gradient-to-t ${barColor} rounded-t-lg shadow-lg transition-all duration-300 ${
-                      isHighlighted ? 'scale-110 shadow-2xl' : ''
-                    }`}
-                  >
-                    <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap">
-                      {value}
-                    </div>
-                  </div>
+        <div className="space-y-4">
+             {/* Additional Controls in Sidebar for Mobile, or just decorative/clean space */}
+             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="flex items-center gap-3 mb-2 text-purple-300">
+                    <Clock size={20} />
+                    <span className="font-semibold">Time Complexity</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Algorithm Info */}
-        <div className="mt-6 bg-gray-800/50 backdrop-blur-lg rounded-xl p-6 border border-purple-500/20">
-          <h3 className="text-xl font-bold text-purple-300 mb-3">
-            About {algorithms[algorithm]}
-          </h3>
-          <div className="text-gray-300 space-y-2">
-            {algorithm === 'bubble' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n²) average and worst case</p>
-                <p><strong>Space Complexity:</strong> O(1)</p>
-                <p>Bubble sort repeatedly steps through the list, compares adjacent elements and swaps them if they're in the wrong order.</p>
-              </>
-            )}
-            {algorithm === 'selection' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n²) in all cases</p>
-                <p><strong>Space Complexity:</strong> O(1)</p>
-                <p>Selection sort divides the list into sorted and unsorted regions, repeatedly selecting the smallest element from the unsorted region.</p>
-              </>
-            )}
-            {algorithm === 'insertion' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n²) average and worst case, O(n) best case</p>
-                <p><strong>Space Complexity:</strong> O(1)</p>
-                <p>Insertion sort builds the final sorted array one item at a time by inserting each element into its correct position.</p>
-              </>
-            )}
-            {algorithm === 'merge' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n log n) in all cases</p>
-                <p><strong>Space Complexity:</strong> O(n)</p>
-                <p>Merge sort divides the array into halves, recursively sorts them, and then merges the sorted halves.</p>
-              </>
-            )}
-            {algorithm === 'quick' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n log n) average, O(n²) worst case</p>
-                <p><strong>Space Complexity:</strong> O(log n)</p>
-                <p>Quick sort picks a pivot element and partitions the array around it, then recursively sorts the partitions.</p>
-              </>
-            )}
-            {algorithm === 'heap' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n log n) in all cases</p>
-                <p><strong>Space Complexity:</strong> O(1)</p>
-                <p>Heap sort builds a max heap from the array and repeatedly extracts the maximum element.</p>
-              </>
-            )}
-            {algorithm === 'shell' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(n log n) to O(n²) depending on gap sequence</p>
-                <p><strong>Space Complexity:</strong> O(1)</p>
-                <p>Shell sort is an optimization of insertion sort that allows elements to move long distances quickly.</p>
-              </>
-            )}
-            {algorithm === 'radix' && (
-              <>
-                <p><strong>Time Complexity:</strong> O(d × n) where d is the number of digits</p>
-                <p><strong>Space Complexity:</strong> O(n + k)</p>
-                <p>Radix sort processes digits from least significant to most significant, using counting sort as a subroutine.</p>
-              </>
-            )}
-          </div>
+                <div className="text-3xl font-bold text-white mb-1">
+                    {algorithm === 'bubble' ? 'O(n²)' : 
+                     algorithm === 'selection' ? 'O(n²)' :
+                     algorithm === 'insertion' ? 'O(n²)' :
+                     algorithm === 'radix' ? 'O(nk)' : 'O(n log n)'}
+                </div>
+                <div className="text-xs text-gray-500 uppercase tracking-wider">Average Case</div>
+             </div>
+             
+             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                <div className="flex items-center gap-3 mb-2 text-blue-300">
+                    <Database size={20} />
+                    <span className="font-semibold">Space Complexity</span>
+                </div>
+                 <div className="text-3xl font-bold text-white mb-1">
+                    {algorithm === 'merge' ? 'O(n)' : 
+                     algorithm === 'quick' ? 'O(log n)' :
+                     algorithm === 'radix' ? 'O(n+k)' : 'O(1)'}
+                 </div>
+                 <div className="text-xs text-gray-500 uppercase tracking-wider">Auxiliary Space</div>
+             </div>
         </div>
       </div>
 
-      <style jsx>{`
-        .slider::-webkit-slider-thumb {
-          appearance: none;
-          width: 20px;
-          height: 20px;
-          background: linear-gradient(to right, #a855f7, #ec4899);
-          cursor: pointer;
-          border-radius: 50%;
-        }
-        .slider::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          background: linear-gradient(to right, #a855f7, #ec4899);
-          cursor: pointer;
-          border-radius: 50%;
-          border: none;
-        }
-      `}</style>
+      {/* Right Main Interface */}
+      <div className="lg:w-2/3 p-4 lg:p-8 relative z-10 flex flex-col h-screen overflow-y-auto">
+        
+        {/* Top Control Bar */}
+        <div className="flex flex-col xl:flex-row gap-4 justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-xl mb-6 w-full">
+            <div className="flex items-center gap-4 w-full xl:w-auto">
+                 <div className="relative group">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-200"></div>
+                    <select
+                        value={algorithm}
+                        onChange={(e) => setAlgorithm(e.target.value)}
+                        disabled={sorting}
+                        className="relative w-full xl:w-64 bg-slate-900 text-white rounded-lg p-3 border border-white/10 focus:border-purple-400 focus:outline-none appearance-none cursor-pointer"
+                    >
+                        {Object.entries(algorithms).map(([key, name]) => (
+                        <option key={key} value={key}>{name}</option>
+                        ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
+                </div>
+                
+                <div className="flex-1 px-4">
+                  <div className="flex justify-between text-xs text-gray-400 mb-1">
+                    <span>Speed</span>
+                    <span>{speed}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="100"
+                    value={speed}
+                    onChange={(e) => setSpeed(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  />
+                </div>
+            </div>
+
+            <div className="flex gap-3 w-full xl:w-auto">
+                 {!sorting ? (
+                    <button
+                        onClick={startSorting}
+                        disabled={array.length === 0}
+                        className="flex-1 xl:flex-none px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] rounded-xl font-bold transition-all transform hover:scale-105 flex items-center justify-center gap-2"
+                    >
+                        <Play size={18} fill="currentColor" /> Sort
+                    </button>
+                 ) : (
+                    <div className="flex gap-2 flex-1 xl:flex-none">
+                        <button
+                            onClick={togglePause}
+                            className={`flex-1 xl:flex-none px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${
+                                isPaused 
+                                ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/30' 
+                                : 'bg-amber-500 hover:bg-amber-400 text-white shadow-amber-500/30'
+                            }`}
+                        >
+                            {isPaused ? <Play size={18} fill="currentColor"/> : <Pause size={18} fill="currentColor"/>}
+                        </button>
+                        <button
+                            onClick={stopSorting}
+                             className="flex-1 xl:flex-none px-4 py-3 bg-red-500/20 border border-red-500/50 hover:bg-red-500/30 text-red-200 rounded-xl font-bold transition-all"
+                        >
+                            <RotateCcw size={18} />
+                        </button>
+                    </div>
+                 )}
+
+                <button
+                    onClick={() => generateRandomArray(30)}
+                    disabled={sorting}
+                    className="px-6 py-3 bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 text-blue-200 rounded-xl font-bold transition-all flex items-center gap-2"
+                >
+                    <RotateCcw size={18} /> Reset
+                </button>
+                
+                 <button
+                    onClick={() => setShowSettings(!showSettings)}
+                    className="px-4 py-3 bg-gray-700/50 hover:bg-gray-600/50 text-gray-300 rounded-xl transition-all border border-white/10"
+                >
+                    <Settings size={20} />
+                </button>
+            </div>
+        </div>
+
+        {/* Extended Settings */}
+        {showSettings && (
+             <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md animate-fade-in-down">
+                <label className="block text-purple-300 mb-2 text-sm font-semibold">
+                Custom Input (comma-separated numbers 1-100)
+                </label>
+                <div className="flex gap-2">
+                <input
+                    type="text"
+                    value={customInput}
+                    onChange={(e) => setCustomInput(e.target.value)}
+                    placeholder="e.g., 45, 23, 67, 12, 89"
+                    disabled={sorting}
+                    className="flex-1 bg-black/30 text-white rounded-lg p-3 border border-white/10 focus:border-purple-400 focus:outline-none"
+                />
+                <button
+                    onClick={handleCustomInput}
+                    disabled={sorting}
+                    className="px-6 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-semibold transition-all"
+                >
+                    Load
+                </button>
+                </div>
+            </div>
+        )}
+
+        {/* Stats Row */}
+        <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
+                <div>
+                     <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Comparisons</p>
+                     <p className="text-2xl font-mono text-white group-hover:text-purple-300 transition-colors">{comparisons}</p>
+                </div>
+                <div className="p-3 rounded-full bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
+                    <Zap size={20} />
+                </div>
+            </div>
+            
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
+                <div>
+                     <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Swaps</p>
+                     <p className="text-2xl font-mono text-white group-hover:text-pink-300 transition-colors">{swaps}</p>
+                </div>
+                <div className="p-3 rounded-full bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 group-hover:scale-110 transition-all">
+                    <RotateCcw size={20} className="rotate-90" />
+                </div>
+            </div>
+
+            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
+                <div>
+                     <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Elements</p>
+                     <p className="text-2xl font-mono text-white group-hover:text-blue-300 transition-colors">{array.length}</p>
+                </div>
+                <div className="p-3 rounded-full bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
+                    <BarChart3 size={20} />
+                </div>
+            </div>
+        </div>
+
+        {/* Main Visualization Area */}
+        <div className="flex-1 relative rounded-3xl bg-black/40 border border-white/10 backdrop-blur-md shadow-2xl p-8 mb-6 overflow-hidden flex flex-col">
+            
+            {/* Step Status Text */}
+            <div className="absolute top-6 left-8 right-8 z-10 flex justify-between items-start">
+                 <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-lg border border-white/5 shadow-lg">
+                    <span className="text-purple-300 font-mono text-sm mr-2">{'>'}</span>
+                    <span className="text-gray-200 font-medium">{currentStep}</span>
+                 </div>
+                 
+                 {isPaused && (
+                     <div className="flex gap-2 animate-in fade-in zoom-in duration-300">
+                        <button
+                            onClick={nextStep}
+                            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/10 transition-all text-sm font-semibold backdrop-blur-md"
+                        >
+                            <StepForward size={16} /> Step
+                        </button>
+                        <button
+                            onClick={nextPass}
+                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg border border-purple-500/30 transition-all text-sm font-semibold backdrop-blur-md"
+                        >
+                            <SkipForward size={16} /> Next Pass
+                        </button>
+                     </div>
+                 )}
+            </div>
+            
+            {/* Grid Floor Effect */}
+            <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_100%,#000_70%,transparent_100%)] pointer-events-none"></div>
+
+            <div className="flex-1 flex items-end justify-center gap-[2px] mt-12 pb-4 relative z-0">
+                {array.map((value, idx) => {
+                const height = (value / maxHeight) * 100;
+                const isHighlighted = highlightedIndices.includes(idx);
+                const isSorted = sortedIndices.includes(idx);
+                
+                // Dynamic styling based on state
+                let barClass = 'bg-slate-400/50'; // Default
+                let shadowClass = '';
+
+                if (isSorted) {
+                    barClass = 'bg-gradient-to-t from-emerald-600 to-emerald-400';
+                    shadowClass = 'shadow-[0_0_15px_rgba(52,211,153,0.5)]';
+                } else if (isHighlighted) {
+                    barClass = 'bg-gradient-to-t from-amber-500 to-yellow-400';
+                    shadowClass = 'shadow-[0_0_20px_rgba(251,191,36,0.8)] z-10 scale-105';
+                } else {
+                     barClass = 'bg-gradient-to-t from-purple-600/80 to-pink-500/80';
+                }
+                
+                return (
+                    <div
+                    key={idx}
+                    className={`relative flex-1 rounded-t-md transition-all duration-300 ease-in-out ${barClass} ${shadowClass}`}
+                    style={{
+                        height: `${height}%`,
+                    }}
+                    >
+                        {/* Tooltip value */}
+                        <div className={`absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.5 rounded opacity-0 transition-opacity ${isHighlighted ? 'opacity-100' : ''}`}>
+                            {value}
+                        </div>
+                    </div>
+                );
+                })}
+            </div>
+        </div>
+        
+         {/* Footer / Description */}
+         <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+            <h3 className="text-lg font-bold text-white mb-2">{algorithms[algorithm]}</h3>
+             <p className="text-gray-400 text-sm leading-relaxed">
+                {algorithm === 'bubble' && "Repeatedly steps through the list, compares adjacent elements and swaps them if they are in the wrong order. The pass through the list is repeated until the list is sorted."}
+                {algorithm === 'selection' && "Divides the input list into two parts: a sorted sublist of items which is built up from left to right at the front (left) of the list and a sublist of the remaining unsorted items that occupy the rest of the list."}
+                {algorithm === 'insertion' && "Builds the final sorted array (or list) one item at a time. It is much less efficient on large lists than more advanced algorithms such as quicksort, heapsort, or merge sort."}
+                {algorithm === 'merge' && "An efficient, stable, comparison-based sorting algorithm. Most implementations produce a stable sort, which means that the order of equal elements is the same in the input and output."}
+                {algorithm === 'quick' && "An efficient sorting algorithm. Developed by British computer scientist Tony Hoare in 1959. It is still a commonly used algorithm for sorting. When implemented well, it can be about two or three times faster than its main competitors, merge sort and heapsort."}
+                {algorithm === 'heap' && "A comparison-based sorting technique based on Binary Heap data structure. It is similar to selection sort where we first find the minimum element and place the minimum element at the beginning."}
+                {algorithm === 'shell' && "In-place comparison sort. It can be seen as either a generalization of sorting by exchange (bubble sort) or sorting by insertion (insertion sort)."}
+                {algorithm === 'radix' && "A non-comparative sorting algorithm. It avoids comparison by creating and distributing elements into buckets according to their radix. For elements with more than one significant digit, this bucketing process is repeated for each digit, while preserving the ordering of the prior step, until all digits have been considered."}
+             </p>
+         </div>
+
+      </div>
     </div>
   );
 };
