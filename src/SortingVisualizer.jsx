@@ -51,7 +51,8 @@ const SortingVisualizer = () => {
     setArray([...newArray]);
     setHighlightedIndices(highlighted);
     setSortedIndices(sorted);
-    await sleep(101 - speed);
+    // Increased delay multiplier to make "slow" speed actually slow
+    await sleep((101 - speed) * 5);
     return true;
   };
 
