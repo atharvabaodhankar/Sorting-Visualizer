@@ -716,10 +716,10 @@ const SortingVisualizer = () => {
                 return (
                     <div
                     key={item.id}
-                    className={`absolute bottom-0 rounded-t-md transition-all duration-300 ease-out ${barClass} ${shadowClass}`}
+                    className={`absolute bottom-0 rounded-t-lg transition-[left,height,background-color,transform] duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${barClass} ${shadowClass}`}
                     style={{
                         height: `${height}%`,
-                        width: `calc(${width}% - 2px)`, // Gap
+                        width: `calc(${width}% - 4px)`, // Gap
                         left: `${idx * width}%`,
                     }}
                     >
