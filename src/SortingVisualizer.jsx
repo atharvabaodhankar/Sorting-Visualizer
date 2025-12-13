@@ -7,6 +7,8 @@ const SortingVisualizer = () => {
   const [isPaused, setIsPaused] = useState(false);
   const [algorithm, setAlgorithm] = useState('bubble');
   const [speed, setSpeed] = useState(50);
+  const speedRef = useRef(50); // Ref to access current speed in async loop
+  
   const [comparisons, setComparisons] = useState(0);
   const [swaps, setSwaps] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
@@ -16,6 +18,7 @@ const SortingVisualizer = () => {
   const [showSettings, setShowSettings] = useState(false);
   
   const stopRef = useRef(false);
+  const isPausedRef = useRef(false); // Ref for pause state
   const pauseResolverRef = useRef(null);
   const skipPassRef = useRef(false);
   const lastPassIdRef = useRef(null);
@@ -35,6 +38,11 @@ const SortingVisualizer = () => {
     generateRandomArray();
   }, []);
 
+  // Update speed ref when state changes
+  useEffect(() => {
+      speedRef.current = speed;
+  }, [speed]);
+
   const generateRandomArray = (size = 30) => {
     const newArray = Array.from({ length: size }, () => 
       Math.floor(Math.random() * 100) + 5
@@ -46,6 +54,7 @@ const SortingVisualizer = () => {
     setSwaps(0);
     setCurrentStep('Ready to sort');
     setIsPaused(false);
+    isPausedRef.current = false;
   };
 
   const sleep = (ms) => {
@@ -66,12 +75,14 @@ const SortingVisualizer = () => {
     setHighlightedIndices(highlighted);
     setSortedIndices(sorted);
 
-    let shouldPause = isPaused;
+    // Use REF for pause check to avoid stale closure
+    let shouldPause = isPausedRef.current;
     
     if (skipPassRef.current) {
         if (passId !== lastPassIdRef.current) {
             skipPassRef.current = false;
-            setIsPaused(true); 
+            setIsPaused(true);
+            isPausedRef.current = true;
             shouldPause = true;
         } else {
             shouldPause = false;
@@ -83,7 +94,8 @@ const SortingVisualizer = () => {
     if (shouldPause) {
         await waitForResume();
     } else {
-        const delay = skipPassRef.current ? 0 : (101 - speed) * 5;
+        // Use REF for speed to avoid stale closure
+        const delay = skipPassRef.current ? 0 : (101 - speedRef.current) * 5;
         await sleep(delay);
     }
     
@@ -333,6 +345,8 @@ const SortingVisualizer = () => {
     lastPassIdRef.current = null;
     pauseResolverRef.current = null;
     setIsPaused(false);
+    isPausedRef.current = false;
+    
     setSorting(true);
     setComparisons(0);
     setSwaps(0);
@@ -354,6 +368,7 @@ const SortingVisualizer = () => {
     }
     setSorting(false);
     setIsPaused(false);
+    isPausedRef.current = false;
     setHighlightedIndices([]);
   };
 
@@ -365,20 +380,23 @@ const SortingVisualizer = () => {
     }
     setSorting(false);
     setIsPaused(false);
+    isPausedRef.current = false;
     setHighlightedIndices([]);
     setCurrentStep('Reset');
     generateRandomArray(array.length);
   };
 
   const togglePause = () => {
-    if (isPaused) {
+    if (isPausedRef.current) {
         setIsPaused(false);
+        isPausedRef.current = false;
         if (pauseResolverRef.current) {
             pauseResolverRef.current();
             pauseResolverRef.current = null;
         }
     } else {
         setIsPaused(true);
+        isPausedRef.current = true;
     }
   };
 
