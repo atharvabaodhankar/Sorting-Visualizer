@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Zap, Settings } from 'lucide-react';
+import { Play, Pause, RotateCcw, Zap, Settings, StepForward, SkipForward } from 'lucide-react';
 
 const SortingVisualizer = () => {
   const [array, setArray] = useState([]);
   const [sorting, setSorting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [algorithm, setAlgorithm] = useState('bubble');
   const [speed, setSpeed] = useState(50);
   const [comparisons, setComparisons] = useState(0);
@@ -13,7 +14,11 @@ const SortingVisualizer = () => {
   const [sortedIndices, setSortedIndices] = useState([]);
   const [customInput, setCustomInput] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  
   const stopRef = useRef(false);
+  const pauseResolverRef = useRef(null);
+  const skipPassRef = useRef(false);
+  const lastPassIdRef = useRef(null);
 
   const algorithms = {
     bubble: 'Bubble Sort',
@@ -40,19 +45,51 @@ const SortingVisualizer = () => {
     setComparisons(0);
     setSwaps(0);
     setCurrentStep('Ready to sort');
+    setIsPaused(false);
   };
 
   const sleep = (ms) => {
     return new Promise(resolve => setTimeout(resolve, ms));
   };
 
-  const updateArray = async (newArray, highlighted = [], sorted = []) => {
+  const waitForResume = async () => {
+    if (pauseResolverRef.current) return; // Already waiting?
+    return new Promise(resolve => {
+      pauseResolverRef.current = resolve;
+    });
+  };
+
+  const updateArray = async (newArray, highlighted = [], sorted = [], passId = null) => {
     if (stopRef.current) return false;
+    
     setArray([...newArray]);
     setHighlightedIndices(highlighted);
     setSortedIndices(sorted);
-    // Increased delay multiplier to make "slow" speed actually slow
-    await sleep((101 - speed) * 5);
+
+    // Handle Skip Pass Logic
+    let shouldPause = isPaused;
+    
+    if (skipPassRef.current) {
+        if (passId !== lastPassIdRef.current) {
+            // New pass detected, stop skipping and pause
+            skipPassRef.current = false;
+            setIsPaused(true); 
+            shouldPause = true;
+        } else {
+            // Still in same pass, ignore pause and run fast
+            shouldPause = false;
+        }
+    }
+
+    lastPassIdRef.current = passId;
+
+    if (shouldPause) {
+        await waitForResume();
+    } else {
+        const delay = skipPassRef.current ? 0 : (101 - speed) * 5;
+        await sleep(delay);
+    }
+    
     return true;
   };
 
@@ -69,7 +106,7 @@ const SortingVisualizer = () => {
         comp++;
         setComparisons(comp);
         
-        if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k))) return;
+        if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
         
         if (arr[j] > arr[j + 1]) {
           [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
@@ -77,7 +114,7 @@ const SortingVisualizer = () => {
           setSwaps(swp);
           swapped = true;
           
-          if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k))) return;
+          if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
         }
       }
       
@@ -101,7 +138,7 @@ const SortingVisualizer = () => {
         comp++;
         setComparisons(comp);
         
-        if (!await updateArray(arr, [i, j, minIdx], Array.from({ length: i }, (_, k) => k))) return;
+        if (!await updateArray(arr, [i, j, minIdx], Array.from({ length: i }, (_, k) => k), i)) return;
         
         if (arr[j] < arr[minIdx]) {
           minIdx = j;
@@ -113,7 +150,7 @@ const SortingVisualizer = () => {
         swp++;
         setSwaps(swp);
         
-        if (!await updateArray(arr, [i, minIdx], Array.from({ length: i + 1 }, (_, k) => k))) return;
+        if (!await updateArray(arr, [i, minIdx], Array.from({ length: i + 1 }, (_, k) => k), i)) return;
       }
     }
     
@@ -135,7 +172,7 @@ const SortingVisualizer = () => {
         comp++;
         setComparisons(comp);
         
-        if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => k))) return;
+        if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => k), i)) return;
         
         if (arr[j] > key) {
           arr[j + 1] = arr[j];
@@ -148,7 +185,7 @@ const SortingVisualizer = () => {
       }
       
       arr[j + 1] = key;
-      if (!await updateArray(arr, [j + 1], Array.from({ length: i + 1 }, (_, k) => k))) return;
+      if (!await updateArray(arr, [j + 1], Array.from({ length: i + 1 }, (_, k) => k), i)) return;
     }
     
     setCurrentStep('Sorting complete!');
@@ -156,18 +193,27 @@ const SortingVisualizer = () => {
   };
 
   // Merge Sort
+  // PassID strategy: Treat each merge operation as a pass, identified by start index or depth?
+  // Let's use a simple counter for Merge Sort passes since it's recursive
+  let mergePassCounter = 0;
+  
   const mergeSort = async (arr, start = 0, end = arr.length - 1) => {
     if (start >= end) return;
     
     const mid = Math.floor((start + end) / 2);
     setCurrentStep(`Dividing array: [${start}...${mid}] and [${mid + 1}...${end}]`);
     
+    // Check pause even during divide steps? Maybe not strictly necessary to visualize divide if updateArray isn't called.
+    // But we should probably visualize the recursion if we want true step-by-step
+    
     await mergeSort(arr, start, mid);
     await mergeSort(arr, mid + 1, end);
-    await merge(arr, start, mid, end);
+    
+    mergePassCounter++;
+    await merge(arr, start, mid, end, mergePassCounter);
   };
 
-  const merge = async (arr, start, mid, end) => {
+  const merge = async (arr, start, mid, end, passId) => {
     const left = arr.slice(start, mid + 1);
     const right = arr.slice(mid + 1, end + 1);
     
@@ -177,7 +223,7 @@ const SortingVisualizer = () => {
     while (i < left.length && j < right.length) {
       setComparisons(c => c + 1);
       
-      if (!await updateArray(arr, [k, start + i, mid + 1 + j], [])) return;
+      if (!await updateArray(arr, [k, start + i, mid + 1 + j], [], passId)) return;
       
       if (left[i] <= right[j]) {
         arr[k] = left[i];
@@ -192,23 +238,25 @@ const SortingVisualizer = () => {
     
     while (i < left.length) {
       arr[k] = left[i];
-      if (!await updateArray(arr, [k], [])) return;
+      if (!await updateArray(arr, [k], [], passId)) return;
       i++;
       k++;
     }
     
     while (j < right.length) {
       arr[k] = right[j];
-      if (!await updateArray(arr, [k], [])) return;
+      if (!await updateArray(arr, [k], [], passId)) return;
       j++;
       k++;
     }
   };
 
   // Quick Sort
+  let quickPassCounter = 0;
   const quickSort = async (arr, low = 0, high = arr.length - 1) => {
     if (low < high) {
-      const pi = await partition(arr, low, high);
+      quickPassCounter++;
+      const pi = await partition(arr, low, high, quickPassCounter);
       if (pi === null) return;
       await quickSort(arr, low, pi - 1);
       await quickSort(arr, pi + 1, high);
@@ -217,7 +265,7 @@ const SortingVisualizer = () => {
     }
   };
 
-  const partition = async (arr, low, high) => {
+  const partition = async (arr, low, high, passId) => {
     const pivot = arr[high];
     let i = low - 1;
     setCurrentStep(`Partitioning around pivot ${pivot}`);
@@ -225,21 +273,21 @@ const SortingVisualizer = () => {
     for (let j = low; j < high; j++) {
       setComparisons(c => c + 1);
       
-      if (!await updateArray(arr, [j, high, i + 1], [])) return null;
+      if (!await updateArray(arr, [j, high, i + 1], [], passId)) return null;
       
       if (arr[j] < pivot) {
         i++;
         [arr[i], arr[j]] = [arr[j], arr[i]];
         setSwaps(s => s + 1);
         
-        if (!await updateArray(arr, [i, j], [])) return null;
+        if (!await updateArray(arr, [i, j], [], passId)) return null;
       }
     }
     
     [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
     setSwaps(s => s + 1);
     
-    if (!await updateArray(arr, [i + 1, high], [])) return null;
+    if (!await updateArray(arr, [i + 1, high], [], passId)) return null;
     
     return i + 1;
   };
@@ -249,8 +297,9 @@ const SortingVisualizer = () => {
     const n = arr.length;
     
     setCurrentStep('Building max heap');
+    // Building heap - maybe treat as one setup pass?
     for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-      await heapify(arr, n, i);
+      await heapify(arr, n, i, 'build');
     }
     
     for (let i = n - 1; i > 0; i--) {
@@ -258,16 +307,17 @@ const SortingVisualizer = () => {
       [arr[0], arr[i]] = [arr[i], arr[0]];
       setSwaps(s => s + 1);
       
-      if (!await updateArray(arr, [0, i], Array.from({ length: n - i }, (_, k) => n - 1 - k))) return;
+      // Extraction pass identified by 'i'
+      if (!await updateArray(arr, [0, i], Array.from({ length: n - i }, (_, k) => n - 1 - k), i)) return;
       
-      await heapify(arr, i, 0);
+      await heapify(arr, i, 0, i);
     }
     
     setCurrentStep('Sorting complete!');
     setSortedIndices(Array.from({ length: n }, (_, i) => i));
   };
 
-  const heapify = async (arr, n, i) => {
+  const heapify = async (arr, n, i, passId) => {
     let largest = i;
     const left = 2 * i + 1;
     const right = 2 * i + 2;
@@ -286,9 +336,9 @@ const SortingVisualizer = () => {
       [arr[i], arr[largest]] = [arr[largest], arr[i]];
       setSwaps(s => s + 1);
       
-      if (!await updateArray(arr, [i, largest], [])) return;
+      if (!await updateArray(arr, [i, largest], [], passId)) return;
       
-      await heapify(arr, n, largest);
+      await heapify(arr, n, largest, passId);
     }
   };
 
@@ -300,6 +350,9 @@ const SortingVisualizer = () => {
     while (gap > 0) {
       setCurrentStep(`Sorting with gap size ${gap}`);
       
+      // Pass ID here can be combination of gap and i? 
+      // Let's use string "gap-{gap}" for major passes
+      
       for (let i = gap; i < n; i++) {
         const temp = arr[i];
         let j = i;
@@ -307,7 +360,7 @@ const SortingVisualizer = () => {
         while (j >= gap) {
           setComparisons(c => c + 1);
           
-          if (!await updateArray(arr, [j, j - gap], [])) return;
+          if (!await updateArray(arr, [j, j - gap], [], `gap-${gap}`)) return;
           
           if (arr[j - gap] > temp) {
             arr[j] = arr[j - gap];
@@ -319,7 +372,7 @@ const SortingVisualizer = () => {
         }
         
         arr[j] = temp;
-        if (!await updateArray(arr, [j], [])) return;
+        if (!await updateArray(arr, [j], [], `gap-${gap}`)) return;
       }
       
       gap = Math.floor(gap / 2);
@@ -349,6 +402,7 @@ const SortingVisualizer = () => {
     const output = new Array(n);
     const count = new Array(10).fill(0);
     
+    // Counting pass
     for (let i = 0; i < n; i++) {
       const digit = Math.floor(arr[i] / exp) % 10;
       count[digit]++;
@@ -358,6 +412,7 @@ const SortingVisualizer = () => {
       count[i] += count[i - 1];
     }
     
+    // Build pass
     for (let i = n - 1; i >= 0; i--) {
       const digit = Math.floor(arr[i] / exp) % 10;
       output[count[digit] - 1] = arr[i];
@@ -365,14 +420,19 @@ const SortingVisualizer = () => {
       setSwaps(s => s + 1);
     }
     
+    // Copy pass
     for (let i = 0; i < n; i++) {
       arr[i] = output[i];
-      if (!await updateArray(arr, [i], [])) return;
+      if (!await updateArray(arr, [i], [], `exp-${exp}`)) return;
     }
   };
 
   const startSorting = async () => {
     stopRef.current = false;
+    skipPassRef.current = false;
+    lastPassIdRef.current = null;
+    pauseResolverRef.current = null;
+    setIsPaused(false);
     setSorting(true);
     setComparisons(0);
     setSwaps(0);
@@ -391,11 +451,13 @@ const SortingVisualizer = () => {
         await insertionSort(arrCopy);
         break;
       case 'merge':
+        mergePassCounter = 0;
         await mergeSort(arrCopy);
         setSortedIndices(Array.from({ length: arrCopy.length }, (_, i) => i));
         setCurrentStep('Sorting complete!');
         break;
       case 'quick':
+        quickPassCounter = 0;
         await quickSort(arrCopy);
         setSortedIndices(Array.from({ length: arrCopy.length }, (_, i) => i));
         setCurrentStep('Sorting complete!');
@@ -412,14 +474,59 @@ const SortingVisualizer = () => {
     }
     
     setSorting(false);
+    setIsPaused(false);
     setHighlightedIndices([]);
   };
 
   const stopSorting = () => {
     stopRef.current = true;
+    if (pauseResolverRef.current) {
+        pauseResolverRef.current(); // Unblock if paused
+        pauseResolverRef.current = null;
+    }
     setSorting(false);
+    setIsPaused(false);
     setHighlightedIndices([]);
-    setCurrentStep('Sorting stopped');
+    setCurrentStep('Reset');
+    generateRandomArray(array.length);
+  };
+
+  const togglePause = () => {
+    if (isPaused) {
+        // Resume
+        setIsPaused(false);
+        if (pauseResolverRef.current) {
+            pauseResolverRef.current();
+            pauseResolverRef.current = null;
+        }
+    } else {
+        // Pause
+        setIsPaused(true);
+    }
+  };
+
+  const nextStep = () => {
+      if (pauseResolverRef.current) {
+          pauseResolverRef.current();
+          pauseResolverRef.current = null;
+          // IMPORTANT: If we are paused, we only want to advance one step.
+          // The updateArray function will check isPaused again next time.
+          // Since togglePause set isPaused(false), we need to ensure it is TRUE for stepping.
+          // Actually, if we are paused, 'isPaused' is true. 
+          // We resolve the promise. updateArray continues. 
+          // It calls sleep(delay) -> wait...
+          // Then calls updateArray again. 
+          // Next updateArray: isPaused is TRUE. waitForResume() called.
+          // So just resolving checks out for 1 step.
+      }
+  };
+
+  const nextPass = () => {
+      skipPassRef.current = true;
+      if (pauseResolverRef.current) {
+          pauseResolverRef.current();
+          pauseResolverRef.current = null;
+      }
   };
 
   const handleCustomInput = () => {
@@ -484,34 +591,36 @@ const SortingVisualizer = () => {
             </div>
 
             <div className="flex items-end gap-2">
-              <button
-                onClick={sorting ? stopSorting : startSorting}
-                disabled={array.length === 0}
-                className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${
-                  sorting
-                    ? 'bg-red-500 hover:bg-red-600 text-white'
-                    : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg'
-                }`}
-              >
-                {sorting ? (
-                  <>
-                    <Pause size={20} /> Stop
-                  </>
+                {!sorting ? (
+                    <button
+                        onClick={startSorting}
+                        disabled={array.length === 0}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white shadow-lg rounded-lg font-semibold transition-all transform hover:scale-105"
+                    >
+                        <Play size={20} /> Sort
+                    </button>
                 ) : (
-                  <>
-                    <Play size={20} /> Sort
-                  </>
+                    <div className="flex flex-1 gap-2">
+                         <button
+                            onClick={togglePause}
+                            className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                                isPaused 
+                                ? 'bg-green-500 hover:bg-green-600 text-white' 
+                                : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                            }`}
+                        >
+                            {isPaused ? <Play size={20} /> : <Pause size={20} />}
+                        </button>
+                    </div>
                 )}
-              </button>
             </div>
 
             <div className="flex items-end gap-2">
               <button
-                onClick={() => generateRandomArray(30)}
-                disabled={sorting}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold transition-all transform hover:scale-105"
+                onClick={stopSorting}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-semibold transition-all transform hover:scale-105"
               >
-                <RotateCcw size={20} /> Reset
+                <RotateCcw size={20} /> Stop
               </button>
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -521,6 +630,27 @@ const SortingVisualizer = () => {
               </button>
             </div>
           </div>
+          
+           {sorting && (
+            <div className="flex gap-4 justify-center mt-4">
+                 <button
+                    onClick={nextStep}
+                    disabled={!isPaused}
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all"
+                    title="Next Step (only when paused)"
+                 >
+                    <StepForward size={20} /> Step
+                 </button>
+                 <button
+                    onClick={nextPass}
+                    disabled={!isPaused} // Can specificy if we want Next Pass to work while running too, but user req implied "skip" logic
+                    className="flex items-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg transition-all"
+                     title="Next Pass (only when paused)"
+                 >
+                    <SkipForward size={20} /> Next Pass
+                 </button>
+            </div>
+             )}
 
           {showSettings && (
             <div className="mt-4 p-4 bg-gray-700/30 rounded-lg border border-purple-500/20">
@@ -582,7 +712,7 @@ const SortingVisualizer = () => {
         {/* Current Step */}
         <div className="bg-gray-800/50 backdrop-blur-lg rounded-xl p-4 mb-6 border border-purple-500/20">
           <p className="text-center text-purple-300 text-lg font-semibold">
-            {currentStep}
+            {currentStep} {isPaused ? '(Paused)' : ''}
           </p>
         </div>
 
