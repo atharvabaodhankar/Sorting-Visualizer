@@ -48,9 +48,10 @@ const SortingVisualizer = () => {
   }, [speed]);
 
   const generateRandomArray = (size = 30) => {
-    const newArray = Array.from({ length: size }, () => 
-      Math.floor(Math.random() * 100) + 5
-    );
+    const newArray = Array.from({ length: size }, (_, i) => ({
+      value: Math.floor(Math.random() * 100) + 5,
+      id: `item-${Date.now()}-${i}`
+    }));
     setArray(newArray);
     setSortedIndices([]);
     setHighlightedIndices([]);
@@ -111,7 +112,7 @@ const SortingVisualizer = () => {
     return true;
   };
 
-  // --- Sorting Implementations (No changes to logic) ---
+  // --- Sorting Implementations (Refactored for Objects) ---
   const bubbleSort = async (arr) => {
     const n = arr.length;
     let comp = 0, swp = 0;
@@ -122,7 +123,7 @@ const SortingVisualizer = () => {
         comp++;
         setComparisons(comp);
         if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
-        if (arr[j] > arr[j + 1]) {
+        if (arr[j].value > arr[j + 1].value) {
           [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
           swp++;
           setSwaps(swp);
@@ -146,7 +147,7 @@ const SortingVisualizer = () => {
         comp++;
         setComparisons(comp);
         if (!await updateArray(arr, [i, j, minIdx], Array.from({ length: i }, (_, k) => k), i)) return;
-        if (arr[j] < arr[minIdx]) minIdx = j;
+        if (arr[j].value < arr[minIdx].value) minIdx = j;
       }
       if (minIdx !== i) {
         [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
@@ -165,12 +166,12 @@ const SortingVisualizer = () => {
     for (let i = 1; i < n; i++) {
       let key = arr[i];
       let j = i - 1;
-      setCurrentStep(`Inserting element ${key} into sorted portion`);
+      setCurrentStep(`Inserting element ${key.value} into sorted portion`);
       while (j >= 0) {
         comp++;
         setComparisons(comp);
         if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => k), i)) return;
-        if (arr[j] > key) {
+        if (arr[j].value > key.value) {
           arr[j + 1] = arr[j];
           swp++;
           setSwaps(swp);
@@ -203,7 +204,7 @@ const SortingVisualizer = () => {
     while (i < left.length && j < right.length) {
       setComparisons(c => c + 1);
       if (!await updateArray(arr, [k, start + i, mid + 1 + j], [], passId)) return;
-      if (left[i] <= right[j]) { arr[k] = left[i]; i++; } 
+      if (left[i].value <= right[j].value) { arr[k] = left[i]; i++; } 
       else { arr[k] = right[j]; j++; }
       setSwaps(s => s + 1); k++;
     }
@@ -235,11 +236,11 @@ const SortingVisualizer = () => {
   const partition = async (arr, low, high, passId) => {
     const pivot = arr[high];
     let i = low - 1;
-    setCurrentStep(`Partitioning around pivot ${pivot}`);
+    setCurrentStep(`Partitioning around pivot ${pivot.value}`);
     for (let j = low; j < high; j++) {
       setComparisons(c => c + 1);
       if (!await updateArray(arr, [j, high, i + 1], [], passId)) return null;
-      if (arr[j] < pivot) {
+      if (arr[j].value < pivot.value) {
         i++;
         [arr[i], arr[j]] = [arr[j], arr[i]];
         setSwaps(s => s + 1);
@@ -275,11 +276,11 @@ const SortingVisualizer = () => {
     const right = 2 * i + 2;
     if (left < n) {
       setComparisons(c => c + 1);
-      if (arr[left] > arr[largest]) largest = left;
+      if (arr[left].value > arr[largest].value) largest = left;
     }
     if (right < n) {
       setComparisons(c => c + 1);
-      if (arr[right] > arr[largest]) largest = right;
+      if (arr[right].value > arr[largest].value) largest = right;
     }
     if (largest !== i) {
       [arr[i], arr[largest]] = [arr[largest], arr[i]];
@@ -300,7 +301,7 @@ const SortingVisualizer = () => {
         while (j >= gap) {
           setComparisons(c => c + 1);
           if (!await updateArray(arr, [j, j - gap], [], `gap-${gap}`)) return;
-          if (arr[j - gap] > temp) {
+          if (arr[j - gap].value > temp.value) {
             arr[j] = arr[j - gap];
             setSwaps(s => s + 1);
             j -= gap;
@@ -316,7 +317,7 @@ const SortingVisualizer = () => {
   };
 
   const radixSort = async (arr) => {
-    const max = Math.max(...arr);
+    const max = Math.max(...arr.map(o => o.value));
     let exp = 1;
     while (Math.floor(max / exp) > 0) {
       setCurrentStep(`Sorting by digit at position ${exp}`);
@@ -332,12 +333,12 @@ const SortingVisualizer = () => {
     const output = new Array(n);
     const count = new Array(10).fill(0);
     for (let i = 0; i < n; i++) {
-      const digit = Math.floor(arr[i] / exp) % 10;
+      const digit = Math.floor(arr[i].value / exp) % 10;
       count[digit]++;
     }
     for (let i = 1; i < 10; i++) { count[i] += count[i - 1]; }
     for (let i = n - 1; i >= 0; i--) {
-      const digit = Math.floor(arr[i] / exp) % 10;
+      const digit = Math.floor(arr[i].value / exp) % 10;
       output[count[digit] - 1] = arr[i];
       count[digit]--;
       setSwaps(s => s + 1);
@@ -430,7 +431,7 @@ const SortingVisualizer = () => {
       .map(n => parseInt(n.trim()))
       .filter(n => !isNaN(n) && n > 0 && n <= 100);
     if (numbers.length > 0) {
-      setArray(numbers);
+      setArray(numbers.map((val, i) => ({ value: val, id: `custom-${Date.now()}-${i}` })));
       setSortedIndices([]);
       setHighlightedIndices([]);
       setComparisons(0);
@@ -440,7 +441,7 @@ const SortingVisualizer = () => {
     }
   };
 
-  const maxHeight = Math.max(...array);
+  const maxHeight = array.length > 0 ? Math.max(...array.map(o => o.value)) : 0;
 
   return (
     <div className="flex min-h-screen bg-[#0f1020] text-gray-100 overflow-hidden font-sans relative">
@@ -654,9 +655,9 @@ const SortingVisualizer = () => {
             
             {/* Action Overlay */}
             {flashMessage && (
-                <div className="absolute inset-0 flex items-center justify-center z-50 pointer-events-none">
-                    <div className="bg-black/50 backdrop-blur-sm p-8 rounded-3xl animate-in zoom-in duration-200">
-                        <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-[0_0_30px_rgba(250,204,21,0.5)] animate-bounce tracking-widest">
+                <div className="absolute top-20 right-8 z-40 pointer-events-none">
+                    <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-2xl animate-in slide-in-from-right-10 fade-in duration-200 border border-yellow-500/20 shadow-2xl transform rotate-3">
+                        <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-[0_0_20px_rgba(250,204,21,0.6)] tracking-widest">
                             {flashMessage}
                         </h1>
                     </div>
@@ -691,11 +692,12 @@ const SortingVisualizer = () => {
             {/* Grid Floor Effect */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_100%,#000_70%,transparent_100%)] pointer-events-none"></div>
 
-            <div className="flex-1 flex items-end justify-center gap-[2px] mt-12 pb-4 relative z-0">
-                {array.map((value, idx) => {
-                const height = (value / maxHeight) * 100;
+            <div className="flex-1 relative mt-12 mb-4 w-full h-full"> 
+                {array.map((item, idx) => {
+                const height = (item.value / maxHeight) * 100;
                 const isHighlighted = highlightedIndices.includes(idx);
                 const isSorted = sortedIndices.includes(idx);
+                const width = 100 / array.length;
                 
                 // Dynamic styling based on state
                 let barClass = 'bg-slate-400/50'; // Default
@@ -706,22 +708,24 @@ const SortingVisualizer = () => {
                     shadowClass = 'shadow-[0_0_15px_rgba(52,211,153,0.5)]';
                 } else if (isHighlighted) {
                     barClass = 'bg-gradient-to-t from-amber-500 to-yellow-400';
-                    shadowClass = 'shadow-[0_0_20px_rgba(251,191,36,0.8)] z-10 scale-105';
+                    shadowClass = 'shadow-[0_0_20px_rgba(251,191,36,0.8)] z-20 scale-110';
                 } else {
                      barClass = 'bg-gradient-to-t from-purple-600/80 to-pink-500/80';
                 }
                 
                 return (
                     <div
-                    key={idx}
-                    className={`relative flex-1 rounded-t-md transition-all duration-300 ease-in-out ${barClass} ${shadowClass}`}
+                    key={item.id}
+                    className={`absolute bottom-0 rounded-t-md transition-all duration-300 ease-out ${barClass} ${shadowClass}`}
                     style={{
                         height: `${height}%`,
+                        width: `calc(${width}% - 2px)`, // Gap
+                        left: `${idx * width}%`,
                     }}
                     >
                         {/* Tooltip value */}
                         <div className={`absolute -top-7 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white bg-black/80 px-1.5 py-0.5 rounded opacity-0 transition-opacity ${isHighlighted ? 'opacity-100' : ''}`}>
-                            {value}
+                            {item.value}
                         </div>
                     </div>
                 );
