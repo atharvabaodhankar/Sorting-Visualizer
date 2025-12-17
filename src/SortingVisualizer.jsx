@@ -41,15 +41,21 @@ const SortingVisualizer = () => {
   };
 
   useEffect(() => {
+    // Initial generation with responsive size
     generateRandomArray();
+    if (window.innerWidth < 1024) {
+        setIsSidebarOpen(false);
+    }
   }, []);
 
   useEffect(() => {
       speedRef.current = speed;
   }, [speed]);
 
-  const generateRandomArray = (size = 30) => {
-    const newArray = Array.from({ length: size }, (_, i) => ({
+  const generateRandomArray = (size) => {
+    // Use provided size, or dynamically choose based on screen width
+    const count = size || (window.innerWidth < 640 ? 15 : 30);
+    const newArray = Array.from({ length: count }, (_, i) => ({
       value: Math.floor(Math.random() * 100) + 5,
       id: `item-${Date.now()}-${i}`
     }));
@@ -231,73 +237,81 @@ const SortingVisualizer = () => {
       </div>
 
       {/* Left Sidebar / Hero Section */}
-      <div className={`${isSidebarOpen ? 'w-full lg:w-1/3 p-8 opacity-100' : 'w-0 p-0 opacity-0 overflow-hidden'} transition-all duration-300 ease-in-out flex flex-col justify-center relative z-20 border-r border-white/10 bg-black/20 backdrop-blur-xl whitespace-nowrap`}>
-        <div className="mb-8">
-           <div className="flex items-center gap-4 mb-6">
-                <h1 className="text-5xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] leading-tight">
-                    Sorting <br/> Visualizer
-                </h1>
-           </div>
-          <p className="text-xl text-gray-400 font-light leading-relaxed">
-            Experience the beauty of algorithms in motion. <br/>
-            Watch how data organizes itself through elegant logic.
-          </p>
-        </div>
+      <div className={`fixed inset-y-0 left-0 z-50 w-full md:w-80 lg:w-1/3 bg-[#0f1020]/95 lg:bg-black/20 backdrop-blur-xl border-r border-white/10 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:block flex flex-col justify-center p-8 overflow-y-auto`}>
+         
+         {/* Mobile Close Button */}
+         <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-white/5 rounded-lg"
+         >
+            <Menu size={20} />
+         </button>
 
-        <div className="space-y-4">
-             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-                <div className="flex items-center gap-3 mb-2 text-purple-300">
-                    <Clock size={20} />
-                    <span className="font-semibold">Time Complexity</span>
-                </div>
-                <div className="text-3xl font-bold text-white mb-1">
-                    {algorithm === 'bubble' ? 'O(n²)' : 
-                     algorithm === 'selection' ? 'O(n²)' :
-                     algorithm === 'insertion' ? 'O(n²)' :
-                     algorithm === 'radix' ? 'O(nk)' : 'O(n log n)'}
-                </div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Average Case</div>
-             </div>
-             
-             <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-                <div className="flex items-center gap-3 mb-2 text-blue-300">
-                    <Database size={20} />
-                    <span className="font-semibold">Space Complexity</span>
-                </div>
-                 <div className="text-3xl font-bold text-white mb-1">
-                    {algorithm === 'merge' ? 'O(n)' : 
-                     algorithm === 'quick' ? 'O(log n)' :
-                     algorithm === 'radix' ? 'O(n+k)' : 'O(1)'}
+         <div className="mb-8 mt-8 lg:mt-0">
+            <div className="flex items-center gap-4 mb-6">
+                 <h1 className="text-4xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-purple-400 via-pink-400 to-blue-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] leading-tight">
+                     Sorting <br/> Visualizer
+                 </h1>
+            </div>
+           <p className="text-lg lg:text-xl text-gray-400 font-light leading-relaxed">
+             Experience the beauty of algorithms in motion. <br className="hidden lg:block"/>
+             Watch how data organizes itself through elegant logic.
+           </p>
+         </div>
+
+         <div className="space-y-4">
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                 <div className="flex items-center gap-3 mb-2 text-purple-300">
+                     <Clock size={20} />
+                     <span className="font-semibold">Time Complexity</span>
                  </div>
-                 <div className="text-xs text-gray-500 uppercase tracking-wider">Auxiliary Space</div>
-             </div>
-        </div>
+                 <div className="text-3xl font-bold text-white mb-1">
+                     {algorithm === 'bubble' ? 'O(n²)' : 
+                      algorithm === 'selection' ? 'O(n²)' :
+                      algorithm === 'insertion' ? 'O(n²)' :
+                      algorithm === 'radix' ? 'O(nk)' : 'O(n log n)'}
+                 </div>
+                 <div className="text-xs text-gray-500 uppercase tracking-wider">Average Case</div>
+              </div>
+              
+              <div className="p-6 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
+                 <div className="flex items-center gap-3 mb-2 text-blue-300">
+                     <Database size={20} />
+                     <span className="font-semibold">Space Complexity</span>
+                 </div>
+                  <div className="text-3xl font-bold text-white mb-1">
+                     {algorithm === 'merge' ? 'O(n)' : 
+                      algorithm === 'quick' ? 'O(log n)' :
+                      algorithm === 'radix' ? 'O(n+k)' : 'O(1)'}
+                  </div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider">Auxiliary Space</div>
+              </div>
+         </div>
       </div>
 
       {/* Right Main Interface */}
-      <div className={`flex-1 p-4 lg:p-8 relative z-10 flex flex-col h-screen overflow-y-auto transition-all duration-300`}>
+      <div className={`flex-1 p-4 lg:p-8 relative z-10 flex flex-col h-screen overflow-y-auto transition-all duration-300 w-full`}>
         
-        {/* Top Control Bar */}
         {/* Top Control Bar */}
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-xl mb-6 w-full">
             
-            <div className="flex flex-col md:flex-row items-center gap-4 w-full xl:w-auto">
-                 {/* Sidebar Toggle Button */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                 {/* Sidebar Toggle Button (Mobile Only) */}
                  <button 
-                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                    className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md border border-white/10 transition-all shadow-lg group flex-shrink-0"
-                    title="Toggle Sidebar"
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="lg:hidden p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md border border-white/10 transition-all shadow-lg group flex-shrink-0 self-start sm:self-auto"
+                    title="Open Menu"
                 >
                     <Menu size={20} className="group-hover:scale-110 transition-transform" />
                 </button>
 
-                 <div className="relative group w-full md:w-auto">
+                 <div className="relative group w-full sm:w-auto flex-1">
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-blue-500 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-200"></div>
                     <select
                         value={algorithm}
                         onChange={(e) => setAlgorithm(e.target.value)}
                         disabled={sorting}
-                        className="relative w-full md:w-64 bg-slate-900 text-white rounded-lg p-3 border border-white/10 focus:border-purple-400 focus:outline-none appearance-none cursor-pointer"
+                        className="relative w-full sm:w-64 bg-slate-900 text-white rounded-lg p-3 border border-white/10 focus:border-purple-400 focus:outline-none appearance-none cursor-pointer"
                     >
                         {Object.entries(algorithms).map(([key, name]) => (
                         <option key={key} value={key}>{name}</option>
@@ -306,7 +320,7 @@ const SortingVisualizer = () => {
                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                 </div>
                 
-                <div className="w-full md:w-48 px-2 group/slider">
+                <div className="w-full sm:w-48 px-2 group/slider">
                   <div className="flex justify-between text-xs font-medium text-gray-400 mb-2 transition-colors">
                     <div className="flex items-center gap-2 group-hover/slider:text-purple-300 transition-colors">
                         <Zap size={14} className={`transition-all ${speed > 75 ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" : "text-gray-500"}`} />
@@ -331,15 +345,15 @@ const SortingVisualizer = () => {
                     <button
                         onClick={startSorting}
                         disabled={array.length === 0}
-                        className="flex-1 xl:flex-none px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] rounded-xl font-bold transition-all transform hover:scale-105 flex items-center justify-center gap-2 min-w-[120px]"
+                        className="flex-1 sm:flex-none px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] rounded-xl font-bold transition-all transform hover:scale-105 flex items-center justify-center gap-2 min-w-[120px]"
                     >
                         <Play size={18} fill="currentColor" /> Sort
                     </button>
                  ) : (
-                    <div className="flex gap-2 flex-1 xl:flex-none">
+                    <div className="flex gap-2 flex-1 sm:flex-none w-full sm:w-auto">
                         <button
                             onClick={togglePause}
-                            className={`flex-1 xl:flex-none px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg min-w-[100px] ${
+                            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg min-w-[100px] ${
                                 isPaused 
                                 ? 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/30' 
                                 : 'bg-amber-500 hover:bg-amber-400 text-white shadow-amber-500/30'
@@ -349,7 +363,7 @@ const SortingVisualizer = () => {
                         </button>
                         <button
                             onClick={stopSorting}
-                             className="flex-1 xl:flex-none px-4 py-3 bg-red-500/20 border border-red-500/50 hover:bg-red-500/30 text-red-200 rounded-xl font-bold transition-all"
+                             className="flex-1 sm:flex-none px-4 py-3 bg-red-500/20 border border-red-500/50 hover:bg-red-500/30 text-red-200 rounded-xl font-bold transition-all"
                         >
                             <RotateCcw size={18} />
                         </button>
@@ -357,9 +371,9 @@ const SortingVisualizer = () => {
                  )}
 
                 <button
-                    onClick={() => generateRandomArray(30)}
+                    onClick={() => generateRandomArray()}
                     disabled={sorting}
-                    className="px-6 py-3 bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 text-blue-200 rounded-xl font-bold transition-all flex items-center gap-2"
+                    className="flex-1 sm:flex-none px-6 py-3 bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/30 text-blue-200 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                 >
                     <RotateCcw size={18} /> Reset
                 </button>
@@ -400,46 +414,46 @@ const SortingVisualizer = () => {
         )}
 
         {/* Stats Row */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
                 <div>
                      <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Comparisons</p>
-                     <p className="text-2xl font-mono text-white group-hover:text-purple-300 transition-colors">{comparisons}</p>
+                     <p className="text-xl md:text-2xl font-mono text-white group-hover:text-purple-300 transition-colors">{comparisons}</p>
                 </div>
-                <div className="p-3 rounded-full bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
-                    <Zap size={20} />
+                <div className="p-2 md:p-3 rounded-full bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
+                    <Zap size={16} className="md:w-5 md:h-5" />
                 </div>
             </div>
             
             <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
                 <div>
                      <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Swaps</p>
-                     <p className="text-2xl font-mono text-white group-hover:text-pink-300 transition-colors">{swaps}</p>
+                     <p className="text-xl md:text-2xl font-mono text-white group-hover:text-pink-300 transition-colors">{swaps}</p>
                 </div>
-                <div className="p-3 rounded-full bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 group-hover:scale-110 transition-all">
-                    <RotateCcw size={20} className="rotate-90" />
+                <div className="p-2 md:p-3 rounded-full bg-pink-500/10 text-pink-400 group-hover:bg-pink-500/20 group-hover:scale-110 transition-all">
+                    <RotateCcw size={16} className="rotate-90 md:w-5 md:h-5" />
                 </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
+            <div className="col-span-2 md:col-span-1 p-4 rounded-xl bg-white/[0.03] border border-white/[0.05] backdrop-blur-sm flex items-center justify-between group hover:bg-white/[0.06] transition-all">
                 <div>
                      <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold mb-1">Elements</p>
-                     <p className="text-2xl font-mono text-white group-hover:text-blue-300 transition-colors">{array.length}</p>
+                     <p className="text-xl md:text-2xl font-mono text-white group-hover:text-blue-300 transition-colors">{array.length}</p>
                 </div>
-                <div className="p-3 rounded-full bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
-                    <BarChart3 size={20} />
+                <div className="p-2 md:p-3 rounded-full bg-blue-500/10 text-blue-400 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
+                    <BarChart3 size={16} className="md:w-5 md:h-5" />
                 </div>
             </div>
         </div>
 
         {/* Main Visualization Area */}
-        <div className="flex-1 relative rounded-3xl bg-black/40 border border-white/10 backdrop-blur-md shadow-2xl p-8 mb-6 overflow-hidden flex flex-col">
+        <div className="flex-1 relative rounded-3xl bg-black/40 border border-white/10 backdrop-blur-md shadow-2xl p-4 md:p-8 mb-6 overflow-hidden flex flex-col min-h-[300px]">
             
             {/* Action Overlay */}
             {flashMessage && (
                 <div className="absolute top-20 right-8 z-40 pointer-events-none">
                     <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-2xl animate-in slide-in-from-right-10 fade-in duration-200 border border-yellow-500/20 shadow-2xl transform">
-                        <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-[0_0_20px_rgba(250,204,21,0.6)] tracking-widest">
+                        <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-[0_0_20px_rgba(250,204,21,0.6)] tracking-widest">
                             {flashMessage}
                         </h1>
                     </div>
@@ -447,25 +461,25 @@ const SortingVisualizer = () => {
             )}
             
             {/* Step Status Text */}
-            <div className="absolute top-6 left-8 right-8 z-10 flex justify-between items-start">
-                 <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-lg border border-white/5 shadow-lg">
+            <div className="absolute top-4 md:top-6 left-4 md:left-8 right-4 md:right-8 z-10 flex flex-col md:flex-row justify-between items-start gap-2">
+                 <div className="bg-black/40 backdrop-blur-md px-4 py-2 rounded-lg border border-white/5 shadow-lg w-full md:w-auto">
                     <span className="text-purple-300 font-mono text-sm mr-2">{'>'}</span>
-                    <span className="text-gray-200 font-medium">{currentStep}</span>
+                    <span className="text-gray-200 font-medium text-xs md:text-sm">{currentStep}</span>
                  </div>
                  
                  {isPaused && (
-                     <div className="flex gap-2 animate-in fade-in zoom-in duration-300">
+                     <div className="flex gap-2 animate-in fade-in zoom-in duration-300 self-end md:self-auto">
                         <button
                             onClick={nextStep}
-                            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/10 transition-all text-sm font-semibold backdrop-blur-md"
+                            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg border border-white/10 transition-all text-xs md:text-sm font-semibold backdrop-blur-md"
                         >
-                            <StepForward size={16} /> Step
+                            <StepForward size={14} className="md:w-4 md:h-4" /> <span className="hidden sm:inline">Step</span>
                         </button>
                         <button
                             onClick={nextPass}
-                            className="flex items-center gap-2 px-4 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg border border-purple-500/30 transition-all text-sm font-semibold backdrop-blur-md"
+                            className="flex items-center gap-2 px-3 py-1.5 md:px-4 md:py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 rounded-lg border border-purple-500/30 transition-all text-xs md:text-sm font-semibold backdrop-blur-md"
                         >
-                            <SkipForward size={16} /> Next Pass
+                            <SkipForward size={14} className="md:w-4 md:h-4" /> <span className="hidden sm:inline">Next Pass</span>
                         </button>
                      </div>
                  )}
@@ -474,7 +488,7 @@ const SortingVisualizer = () => {
             {/* Grid Floor Effect */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_100%,#000_70%,transparent_100%)] pointer-events-none"></div>
 
-            <div className="flex-1 relative mt-12 mb-4 w-full h-full"> 
+            <div className="flex-1 relative mt-16 md:mt-12 mb-4 w-full h-full"> 
                 {array.map((item, idx) => {
                 const height = (item.value / maxHeight) * 100;
                 const isHighlighted = highlightedIndices.includes(idx);
