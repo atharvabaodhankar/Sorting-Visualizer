@@ -528,10 +528,13 @@ const SortingVisualizer = () => {
                     <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none" size={16} />
                 </div>
                 
-                <div className="w-full md:w-48 px-2">
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>Speed</span>
-                    <span>{speed}%</span>
+                <div className="w-full md:w-48 px-2 group/slider">
+                  <div className="flex justify-between text-xs font-medium text-gray-400 mb-2 transition-colors">
+                    <div className="flex items-center gap-2 group-hover/slider:text-purple-300 transition-colors">
+                        <Zap size={14} className={`transition-all ${speed > 75 ? "text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.5)]" : "text-gray-500"}`} />
+                        <span className="uppercase tracking-wider text-[10px]">Speed</span>
+                    </div>
+                    <span className="font-mono text-sm text-purple-200">{speed}%</span>
                   </div>
                   <input
                     type="range"
@@ -539,7 +542,8 @@ const SortingVisualizer = () => {
                     max="100"
                     value={speed}
                     onChange={(e) => setSpeed(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    className="premium-slider w-full cursor-pointer h-1.5"
+                    style={{ backgroundSize: `${speed}% 100%` }}
                   />
                 </div>
             </div>
