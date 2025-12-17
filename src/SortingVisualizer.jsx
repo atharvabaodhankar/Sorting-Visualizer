@@ -237,7 +237,8 @@ const SortingVisualizer = () => {
       </div>
 
       {/* Left Sidebar / Hero Section */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-full md:w-80 lg:w-1/3 bg-[#0f1020]/95 lg:bg-black/20 backdrop-blur-xl border-r border-white/10 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:block flex flex-col justify-center p-8 overflow-y-auto`}>
+      {/* Left Sidebar / Hero Section */}
+      <div className={`fixed inset-y-0 left-0 z-50 bg-[#0f1020]/95 lg:bg-black/20 backdrop-blur-xl border-r border-white/10 transition-all duration-300 ease-in-out flex flex-col justify-center overflow-y-auto lg:relative ${isSidebarOpen ? 'translate-x-0 w-full md:w-80 lg:w-1/3 p-8 opacity-100' : '-translate-x-full w-full md:w-80 lg:w-0 lg:p-0 lg:opacity-0 lg:overflow-hidden lg:translate-x-0'}`}>
          
          {/* Mobile Close Button */}
          <button 
@@ -296,11 +297,11 @@ const SortingVisualizer = () => {
         <div className="flex flex-col xl:flex-row gap-4 justify-between items-center p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md shadow-xl mb-6 w-full">
             
             <div className="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
-                 {/* Sidebar Toggle Button (Mobile Only) */}
+                 {/* Sidebar Toggle Button */}
                  <button 
-                    onClick={() => setIsSidebarOpen(true)}
-                    className="lg:hidden p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md border border-white/10 transition-all shadow-lg group flex-shrink-0 self-start sm:self-auto"
-                    title="Open Menu"
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-lg backdrop-blur-md border border-white/10 transition-all shadow-lg group flex-shrink-0 self-start sm:self-auto"
+                    title="Toggle Menu"
                 >
                     <Menu size={20} className="group-hover:scale-110 transition-transform" />
                 </button>
