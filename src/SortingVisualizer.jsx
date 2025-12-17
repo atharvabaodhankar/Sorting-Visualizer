@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Zap, Settings, StepForward, SkipForward, ChevronDown, BarChart3, Clock, Database, Menu } from 'lucide-react';
+import * as SortingAlgorithms from './algorithms';
 
 const SortingVisualizer = () => {
   const [array, setArray] = useState([]);
@@ -112,247 +113,8 @@ const SortingVisualizer = () => {
     return true;
   };
 
-  // --- Sorting Implementations (Refactored for Objects) ---
-  const bubbleSort = async (arr) => {
-    const n = arr.length;
-    let comp = 0, swp = 0;
-    for (let i = 0; i < n - 1; i++) {
-      let swapped = false;
-      setCurrentStep(`Pass ${i + 1}: Comparing adjacent elements`);
-      for (let j = 0; j < n - i - 1; j++) {
-        comp++;
-        setComparisons(comp);
-        if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i)) return;
-        if (arr[j].value > arr[j + 1].value) {
-          [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
-          swp++;
-          setSwaps(swp);
-          swapped = true;
-          if (!await updateArray(arr, [j, j + 1], Array.from({ length: i }, (_, k) => n - 1 - k), i, 'swap')) return;
-        }
-      }
-      if (!swapped) break;
-    }
-    setCurrentStep('Sorting complete!');
-    setSortedIndices(Array.from({ length: n }, (_, i) => i));
-  };
+  // --- Sorting Implementations (Refactored to separate modules) ---
 
-  const selectionSort = async (arr) => {
-    const n = arr.length;
-    let comp = 0, swp = 0;
-    for (let i = 0; i < n - 1; i++) {
-      let minIdx = i;
-      setCurrentStep(`Finding minimum element from position ${i}`);
-      for (let j = i + 1; j < n; j++) {
-        comp++;
-        setComparisons(comp);
-        if (!await updateArray(arr, [i, j, minIdx], Array.from({ length: i }, (_, k) => k), i)) return;
-        if (arr[j].value < arr[minIdx].value) minIdx = j;
-      }
-      if (minIdx !== i) {
-        [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
-        swp++;
-        setSwaps(swp);
-        if (!await updateArray(arr, [i, minIdx], Array.from({ length: i + 1 }, (_, k) => k), i)) return;
-      }
-    }
-    setCurrentStep('Sorting complete!');
-    setSortedIndices(Array.from({ length: n }, (_, i) => i));
-  };
-
-  const insertionSort = async (arr) => {
-    const n = arr.length;
-    let comp = 0, swp = 0;
-    for (let i = 1; i < n; i++) {
-        let j = i;
-        setCurrentStep(`Inserting element ${arr[i].value} into sorted portion`);
-        
-        while (j > 0) {
-            comp++;
-            setComparisons(comp);
-            // Highlight comparison
-            if (!await updateArray(arr, [j, j - 1], Array.from({ length: i }, (_, k) => k), i)) return;
-
-            if (arr[j].value < arr[j - 1].value) {
-                // Swap instead of shift to avoid duplicate keys in React
-                [arr[j], arr[j - 1]] = [arr[j - 1], arr[j]];
-                swp++;
-                setSwaps(swp);
-                // Highlight swap
-                if (!await updateArray(arr, [j, j - 1], Array.from({ length: i }, (_, k) => k), i, 'swap')) return;
-                j--;
-            } else {
-                break;
-            }
-        }
-    }
-    setCurrentStep('Sorting complete!');
-    setSortedIndices(Array.from({ length: n }, (_, i) => i));
-  };
-
-  let mergePassCounter = 0;
-  const mergeSort = async (arr, start = 0, end = arr.length - 1) => {
-    if (start >= end) return;
-    const mid = Math.floor((start + end) / 2);
-    setCurrentStep(`Dividing array: [${start}...${mid}] and [${mid + 1}...${end}]`);
-    await mergeSort(arr, start, mid);
-    await mergeSort(arr, mid + 1, end);
-    mergePassCounter++;
-    await merge(arr, start, mid, end, mergePassCounter);
-  };
-
-  const merge = async (arr, start, mid, end, passId) => {
-    const left = arr.slice(start, mid + 1);
-    const right = arr.slice(mid + 1, end + 1);
-    let i = 0, j = 0, k = start;
-    setCurrentStep(`Merging subarrays from ${start} to ${end}`);
-    while (i < left.length && j < right.length) {
-      setComparisons(c => c + 1);
-      if (!await updateArray(arr, [k, start + i, mid + 1 + j], [], passId)) return;
-      if (left[i].value <= right[j].value) { arr[k] = left[i]; i++; } 
-      else { arr[k] = right[j]; j++; }
-      setSwaps(s => s + 1); k++;
-    }
-    while (i < left.length) {
-      arr[k] = left[i];
-      if (!await updateArray(arr, [k], [], passId)) return;
-      i++; k++;
-    }
-    while (j < right.length) {
-      arr[k] = right[j];
-      if (!await updateArray(arr, [k], [], passId)) return;
-      j++; k++;
-    }
-  };
-
-  let quickPassCounter = 0;
-  const quickSort = async (arr, low = 0, high = arr.length - 1) => {
-    if (low < high) {
-      quickPassCounter++;
-      const pi = await partition(arr, low, high, quickPassCounter);
-      if (pi === null) return;
-      await quickSort(arr, low, pi - 1);
-      await quickSort(arr, pi + 1, high);
-    } else if (low === high) {
-      setSortedIndices(prev => [...prev, low]);
-    }
-  };
-
-  const partition = async (arr, low, high, passId) => {
-    const pivot = arr[high];
-    let i = low - 1;
-    setCurrentStep(`Partitioning around pivot ${pivot.value}`);
-    for (let j = low; j < high; j++) {
-      setComparisons(c => c + 1);
-      if (!await updateArray(arr, [j, high, i + 1], [], passId)) return null;
-      if (arr[j].value < pivot.value) {
-        i++;
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-        setSwaps(s => s + 1);
-        if (!await updateArray(arr, [i, j], [], passId)) return null;
-      }
-    }
-    [arr[i + 1], arr[high]] = [arr[high], arr[i + 1]];
-    setSwaps(s => s + 1);
-    if (!await updateArray(arr, [i + 1, high], [], passId)) return null;
-    return i + 1;
-  };
-
-  const heapSort = async (arr) => {
-    const n = arr.length;
-    setCurrentStep('Building max heap');
-    for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
-      await heapify(arr, n, i, 'build');
-    }
-    for (let i = n - 1; i > 0; i--) {
-      setCurrentStep(`Extracting maximum element to position ${i}`);
-      [arr[0], arr[i]] = [arr[i], arr[0]];
-      setSwaps(s => s + 1);
-      if (!await updateArray(arr, [0, i], Array.from({ length: n - i }, (_, k) => n - 1 - k), i)) return;
-      await heapify(arr, i, 0, i);
-    }
-    setCurrentStep('Sorting complete!');
-    setSortedIndices(Array.from({ length: n }, (_, i) => i));
-  };
-
-  const heapify = async (arr, n, i, passId) => {
-    let largest = i;
-    const left = 2 * i + 1;
-    const right = 2 * i + 2;
-    if (left < n) {
-      setComparisons(c => c + 1);
-      if (arr[left].value > arr[largest].value) largest = left;
-    }
-    if (right < n) {
-      setComparisons(c => c + 1);
-      if (arr[right].value > arr[largest].value) largest = right;
-    }
-    if (largest !== i) {
-      [arr[i], arr[largest]] = [arr[largest], arr[i]];
-      setSwaps(s => s + 1);
-      if (!await updateArray(arr, [i, largest], [], passId)) return;
-      await heapify(arr, n, largest, passId);
-    }
-  };
-
-  const shellSort = async (arr) => {
-    const n = arr.length;
-    let gap = Math.floor(n / 2);
-    while (gap > 0) {
-      setCurrentStep(`Sorting with gap size ${gap}`);
-      for (let i = gap; i < n; i++) {
-        const temp = arr[i];
-        let j = i;
-        while (j >= gap) {
-          setComparisons(c => c + 1);
-          if (!await updateArray(arr, [j, j - gap], [], `gap-${gap}`)) return;
-          if (arr[j - gap].value > temp.value) {
-            arr[j] = arr[j - gap];
-            setSwaps(s => s + 1);
-            j -= gap;
-          } else { break; }
-        }
-        arr[j] = temp;
-        if (!await updateArray(arr, [j], [], `gap-${gap}`)) return;
-      }
-      gap = Math.floor(gap / 2);
-    }
-    setCurrentStep('Sorting complete!');
-    setSortedIndices(Array.from({ length: n }, (_, i) => i));
-  };
-
-  const radixSort = async (arr) => {
-    const max = Math.max(...arr.map(o => o.value));
-    let exp = 1;
-    while (Math.floor(max / exp) > 0) {
-      setCurrentStep(`Sorting by digit at position ${exp}`);
-      await countingSort(arr, exp);
-      exp *= 10;
-    }
-    setCurrentStep('Sorting complete!');
-    setSortedIndices(Array.from({ length: arr.length }, (_, i) => i));
-  };
-
-  const countingSort = async (arr, exp) => {
-    const n = arr.length;
-    const output = new Array(n);
-    const count = new Array(10).fill(0);
-    for (let i = 0; i < n; i++) {
-      const digit = Math.floor(arr[i].value / exp) % 10;
-      count[digit]++;
-    }
-    for (let i = 1; i < 10; i++) { count[i] += count[i - 1]; }
-    for (let i = n - 1; i >= 0; i--) {
-      const digit = Math.floor(arr[i].value / exp) % 10;
-      output[count[digit] - 1] = arr[i];
-      count[digit]--;
-      setSwaps(s => s + 1);
-    }
-    for (let i = 0; i < n; i++) {
-      arr[i] = output[i];
-      if (!await updateArray(arr, [i], [], `exp-${exp}`)) return;
-    }
-  };
 
   const startSorting = async () => {
     stopRef.current = false;
@@ -367,20 +129,31 @@ const SortingVisualizer = () => {
     setSwaps(0);
     setSortedIndices([]);
     const arrCopy = [...array];
-    switch (algorithm) {
-      case 'bubble': await bubbleSort(arrCopy); break;
-      case 'selection': await selectionSort(arrCopy); break;
-      case 'insertion': await insertionSort(arrCopy); break;
-      case 'merge': mergePassCounter = 0; await mergeSort(arrCopy); 
-        setSortedIndices(Array.from({ length: arrCopy.length }, (_, i) => i));
-        setCurrentStep('Sorting complete!'); break;
-      case 'quick': quickPassCounter = 0; await quickSort(arrCopy);
-        setSortedIndices(Array.from({ length: arrCopy.length }, (_, i) => i));
-        setCurrentStep('Sorting complete!'); break;
-      case 'heap': await heapSort(arrCopy); break;
-      case 'shell': await shellSort(arrCopy); break;
-      case 'radix': await radixSort(arrCopy); break;
+
+    const helpers = {
+        updateArray,
+        setComparisons,
+        setSwaps,
+        setCurrentStep,
+        setSortedIndices
+    };
+
+    const algorithmMap = {
+      bubble: SortingAlgorithms.bubbleSort,
+      selection: SortingAlgorithms.selectionSort,
+      insertion: SortingAlgorithms.insertionSort,
+      merge: SortingAlgorithms.mergeSort,
+      quick: SortingAlgorithms.quickSort,
+      heap: SortingAlgorithms.heapSort,
+      shell: SortingAlgorithms.shellSort,
+      radix: SortingAlgorithms.radixSort
+    };
+
+    const selectedAlgorithm = algorithmMap[algorithm];
+    if (selectedAlgorithm) {
+        await selectedAlgorithm(arrCopy, helpers);
     }
+
     setSorting(false);
     setIsPaused(false);
     isPausedRef.current = false;
