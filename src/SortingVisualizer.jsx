@@ -656,7 +656,7 @@ const SortingVisualizer = () => {
             {/* Action Overlay */}
             {flashMessage && (
                 <div className="absolute top-20 right-8 z-40 pointer-events-none">
-                    <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-2xl animate-in slide-in-from-right-10 fade-in duration-200 border border-yellow-500/20 shadow-2xl transform rotate-3">
+                    <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-2xl animate-in slide-in-from-right-10 fade-in duration-200 border border-yellow-500/20 shadow-2xl transform">
                         <h1 className="text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500 drop-shadow-[0_0_20px_rgba(250,204,21,0.6)] tracking-widest">
                             {flashMessage}
                         </h1>
